@@ -1,6 +1,9 @@
 module Main where
 
-import Lib
+import Brick
+import Brick.Main
+import Gui
 
 main :: IO ()
-main = putStrLn someFunc
+main = terminal_init
+

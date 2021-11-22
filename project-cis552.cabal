@@ -9,9 +9,9 @@ version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/project-cis552#readme>
 homepage:       https://github.com/githubuser/project-cis552#readme
 bug-reports:    https://github.com/githubuser/project-cis552/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2020 Author name here
+author:         David and Saurabh
+maintainer:     xudavid@seas.upenn.edu, surb@seas.upenn.edu
+copyright:      2021
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -25,7 +25,13 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      AutoComplete
+      ColorMapper
+      Formatter
+      Gui
+      LuParser
+      LuSyntax
+      Parser
   other-modules:
       Paths_project_cis552
   hs-source-dirs:
@@ -51,8 +57,13 @@ library
       HUnit >=1.6
     , QuickCheck >=2.14.2
     , base >=4.14
+    , brick
     , containers ==0.6.2.1
+    , cursor
+    , cursor-brick
     , mtl
+    , pretty ==1.1.3.6
+    , text
   default-language: Haskell2010
 
 executable project-cis552-exe
@@ -83,9 +94,14 @@ executable project-cis552-exe
       HUnit >=1.6
     , QuickCheck >=2.14.2
     , base >=4.14
+    , brick
     , containers ==0.6.2.1
+    , cursor
+    , cursor-brick
     , mtl
+    , pretty ==1.1.3.6
     , project-cis552
+    , text
   default-language: Haskell2010
 
 test-suite project-cis552-test
@@ -117,7 +133,12 @@ test-suite project-cis552-test
       HUnit >=1.6
     , QuickCheck >=2.14.2
     , base >=4.14
+    , brick
     , containers ==0.6.2.1
+    , cursor
+    , cursor-brick
     , mtl
+    , pretty ==1.1.3.6
     , project-cis552
+    , text
   default-language: Haskell2010
