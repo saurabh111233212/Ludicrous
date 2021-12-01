@@ -62,8 +62,11 @@ library
     , cursor
     , cursor-brick
     , mtl
+    , path
+    , path-io
     , pretty ==1.1.3.6
     , text
+    , vty
   default-language: Haskell2010
 
 executable project-cis552-exe
@@ -99,9 +102,12 @@ executable project-cis552-exe
     , cursor
     , cursor-brick
     , mtl
+    , path
+    , path-io
     , pretty ==1.1.3.6
     , project-cis552
     , text
+    , vty
   default-language: Haskell2010
 
 test-suite project-cis552-test
@@ -138,7 +144,10 @@ test-suite project-cis552-test
     , cursor
     , cursor-brick
     , mtl
+    , path
+    , path-io
     , pretty ==1.1.3.6
     , project-cis552
     , text
+    , vty
   default-language: Haskell2010

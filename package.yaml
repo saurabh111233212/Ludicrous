@@ -33,6 +33,9 @@ dependencies:
 - cursor
 - cursor-brick
 - text
+- path
+- path-io
+- vty
 
 library:
   source-dirs: src

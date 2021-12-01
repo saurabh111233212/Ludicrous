@@ -11,22 +11,17 @@ import LuParser (parseLuFile)
 import Test.HUnit 
 
 -- parser, but parses from Text instead of a String
-parseFromText :: Text -> Either P.ParseError Block
-parseFromText = undefined
+parseFromText :: Text -> IO (Either P.ParseError Block)
+parseFromText text = parseLuFile (show text)
 
--- folds a syntax tree into a formatted string (or block) 
+
+-- folds a syntax tree into a formatted string (or block) ,,,, is this needed?? 
 formatTree :: Block -> Text
 formatTree = undefined
 
+
+
 -- | Given a file path, returns the contents of that file as a string
-getStringFromFile :: String -> String
+getStringFromFile :: String -> String -- IO String
 getStringFromFile fp = undefined
 
--- | parsing and unparsing should not affect the block 
-prop_same_meaning :: Block -> Bool
-prop_same_meaning b = parseFromText (formatTree b) == Right b
-
--- | test Parsing the bfs.lu file
-testParseFromText :: Test
-testParseFromText = "parsingTest" ~:
-                    parseFromText (pack (getStringFromFile "test/bfs.lu")) ~=? Right wBfs
