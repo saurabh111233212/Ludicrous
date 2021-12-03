@@ -22,9 +22,11 @@ addWord :: String -> [String] -> [String]
 addWord w dict = if w `elem` dict then dict else w : dict
 
 deleteWord :: String -> [String] -> [String]
-deleteWord w dict = aux w [] dict where
+deleteWord w = aux w []
+ where
   aux :: String -> [String] -> [String] -> [String]
   aux w rest (word : words) = if w == word then rest ++ words else aux w (word : rest) words
+  aux w rest [] = rest
 
 -- | Finds the distance (Levenshtein) between two strings
 distance :: String -> String -> Int

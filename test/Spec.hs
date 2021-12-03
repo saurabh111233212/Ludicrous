@@ -1,5 +1,7 @@
 import Test.HUnit
 import Test.QuickCheck
+import LuSyntax
+import ColorMapper
 
 main :: IO ()
 main = putStrLn "Test suite not yet implemented"
