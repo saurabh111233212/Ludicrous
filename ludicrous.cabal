@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           project-cis552
+name:           ludicrous
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/project-cis552#readme>
 homepage:       https://github.com/githubuser/project-cis552#readme
@@ -33,7 +33,7 @@ library
       LuSyntax
       Parser
   other-modules:
-      Paths_project_cis552
+      Paths_ludicrous
   hs-source-dirs:
       src
   default-extensions:
@@ -73,10 +73,10 @@ library
     , word-wrap
   default-language: Haskell2010
 
-executable project-cis552-exe
+executable ludicrous
   main-is: Main.hs
   other-modules:
-      Paths_project_cis552
+      Paths_ludicrous
   hs-source-dirs:
       app
   default-extensions:
@@ -106,23 +106,23 @@ executable project-cis552-exe
     , cursor
     , cursor-brick
     , deepseq
+    , ludicrous
     , microlens
     , mtl
     , parsec
     , path
     , path-io
     , pretty ==1.1.3.6
-    , project-cis552
     , text
     , vty
     , word-wrap
   default-language: Haskell2010
 
-test-suite project-cis552-test
+test-suite ludicrous-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_project_cis552
+      Paths_ludicrous
   hs-source-dirs:
       test
   default-extensions:
@@ -152,13 +152,13 @@ test-suite project-cis552-test
     , cursor
     , cursor-brick
     , deepseq
+    , ludicrous
     , microlens
     , mtl
     , parsec
     , path
     , path-io
     , pretty ==1.1.3.6
-    , project-cis552
     , text
     , vty
     , word-wrap

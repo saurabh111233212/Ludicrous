@@ -1,5 +1,7 @@
 module Gui   where
 
+
+import System.Exit
 import Brick
 import Brick.AttrMap
 import Brick.Widgets.Border
@@ -78,7 +80,7 @@ terminalInit = do
             let contents' = rebuildTextFieldCursor (cursor endState)
             saveFile contents' path
         -- no arguments passed or more than one argument passed
-        _ -> error "Error: Usage - project-cis552-exe [filename]"
+        _ -> die "Error: Usage - project-cis552-exe [filename]"
 
 saveFile :: Text -> Path Abs File -> IO ()
 saveFile txt path = Data.Text.IO.writeFile (Path.fromAbsFile path) txt

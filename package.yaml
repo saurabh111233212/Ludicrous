@@ -1,4 +1,4 @@
-name:                project-cis552
+name:                ludicrous
 version:             0.1.0.0
 github:              "githubuser/project-cis552"
 license:             BSD3
@@ -63,7 +63,7 @@ library:
 
 
 executables:
-  project-cis552-exe:
+  ludicrous:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -71,7 +71,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - project-cis552
+    - ludicrous
     default-extensions:
     - ScopedTypeVariables
     - TypeApplications
@@ -92,7 +92,7 @@ executables:
 
 
 tests:
-  project-cis552-test:
+  ludicrous-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -100,7 +100,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - project-cis552
+    - ludicrous
     default-extensions:
     - ScopedTypeVariables
     - TypeApplications
