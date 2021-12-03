@@ -58,15 +58,17 @@ library
     , QuickCheck >=2.14.2
     , base >=4.14
     , brick
-    , containers ==0.6.2.1
+    , containers
     , cursor
     , cursor-brick
+    , microlens
     , mtl
     , path
     , path-io
     , pretty ==1.1.3.6
     , text
     , vty
+    , word-wrap
   default-language: Haskell2010
 
 executable project-cis552-exe
@@ -98,9 +100,10 @@ executable project-cis552-exe
     , QuickCheck >=2.14.2
     , base >=4.14
     , brick
-    , containers ==0.6.2.1
+    , containers
     , cursor
     , cursor-brick
+    , microlens
     , mtl
     , path
     , path-io
@@ -108,6 +111,7 @@ executable project-cis552-exe
     , project-cis552
     , text
     , vty
+    , word-wrap
   default-language: Haskell2010
 
 test-suite project-cis552-test
@@ -140,9 +144,10 @@ test-suite project-cis552-test
     , QuickCheck >=2.14.2
     , base >=4.14
     , brick
-    , containers ==0.6.2.1
+    , containers
     , cursor
     , cursor-brick
+    , microlens
     , mtl
     , path
     , path-io
@@ -150,4 +155,5 @@ test-suite project-cis552-test
     , project-cis552
     , text
     , vty
+    , word-wrap
   default-language: Haskell2010
