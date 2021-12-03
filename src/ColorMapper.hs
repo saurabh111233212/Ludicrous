@@ -54,41 +54,17 @@ charParser = do
 -- parses keywords
 keyParser :: Stream s m Char => ParsecT s u m (Text, Color)
 keyParser = do
-    x <- string "if"
-        <|> string "then"
-        <|> string "else"
-        <|> string "repeat"
-        <|> string "until"
-        <|> string "while"
-        <|> string "do"
-        <|> string "end"
+    x <- choice $ map string ["if", "then", "else", "repeat", "until", "while", "do", "end"]
     return (pack x, C "keyword")
 
 -- parses operators
 opParser :: Stream s m Char => ParsecT s u m (Text, Color)
 opParser = do
-    x <- string "+"
-        <|> string "-"
-        <|> string "*"
-        <|> string "/"
-        <|> string "%"
-        <|> string "="
-        <|> string "="
-        <|> string ">"
-        <|> string "<"
-        <|> string ".."
-        <|> string "."
-        <|> string "not"
-        <|> string "{"
-        <|> string "}"
-        <|> string "["
-        <|> string "]"
-        <|> string "#"
-        <|> string ";"
+    x <- choice $ map string ["+", "-", "*", "/", "%", "=", "<", ">", ".", "not", "{", "}", "[", "]", "#", ";"]
     return $ (pack x, C "operator")
 
 -- parses everything else
 miscParser :: Stream s m Char => ParsecT s u m (Text, Color)
 miscParser = do
-    x <- many1 (noneOf " +-*{}[]=-><%#/;\n")
+    x <- many1 (noneOf " +-*{}[]=-><%#/.;\n")
     return $ (pack x, C "text")
