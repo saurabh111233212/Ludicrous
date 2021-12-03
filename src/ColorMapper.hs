@@ -36,7 +36,7 @@ lineParser =  many1 ( try stringParser <|>
 -- parser for spaces
 wsParser :: Stream s m Char => ParsecT s u m (Text, Color)
 wsParser = do
-    x <- many1 (char ' ')
+    x <- many1 (oneOf " \t")
     return (pack x, C "whitespace")
 
 -- parses string literals
@@ -54,7 +54,7 @@ charParser = do
 -- parses keywords
 keyParser :: Stream s m Char => ParsecT s u m (Text, Color)
 keyParser = do
-    x <- choice $ map string ["if", "then", "else", "repeat", "until", "while", "do", "end"]
+    x <- (choice $ map string ["if", "then", "else", "repeat", "until", "while", "do", "end"]) <* lookAhead (choice [wsParser, pure (T.empty, C $ "") <* eof])
     return (pack x, C "keyword")
 
 -- parses operators

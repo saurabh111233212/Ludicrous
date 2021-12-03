@@ -194,7 +194,7 @@ txtWrapWith' settings s =
                   padding = V.charFill (c^.attrL) ' ' (c^.availWidthL - maxLength) (length lineImgs)
                   lineImgs = lineImg <$> multiple
                   createImage (text, attr) = V.text' 
-                    (attrMapLookup (attrName (attribute attr)) (ctxAttrMap c)) text
+                    (attrMapLookup (attrName (attribute attr)) (ctxAttrMap c)) (sanitiseText text)
                   lineImg lStr = let vals = colorMap lStr
                                      vals' = map createImage vals
                                      endspaces = V.text' 
