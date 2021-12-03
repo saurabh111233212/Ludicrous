@@ -89,7 +89,14 @@ openFile text = do
 
 -- formats text contained within a GUI, returns a new, formatted GUI
 format :: GUI -> GUI
-format = undefined
+format s = let text = rebuildTextFieldCursor (cursor s)
+               block = parseFromText text
+               formatted = formatTree block in
+                 s {
+                   cursor = makeTextFieldCursor formatted,
+                   previous = Just s
+                 }
+
 
 -- handles a Brick Event
 handleEvent :: GUI -> BrickEvent Name e -> EventM Name (Next GUI)

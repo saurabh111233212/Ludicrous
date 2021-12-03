@@ -11,8 +11,8 @@ import LuParser (parseLuFile)
 import Test.HUnit 
 
 -- parser, but parses from Text instead of a String
-parseFromText :: Text -> IO (Either P.ParseError Block)
-parseFromText text = parseLuFile (show text)
+parseFromText :: Text -> Block
+parseFromText text = undefined
 
 
 -- folds a syntax tree into a formatted string (or block) ,,,, is this needed?? 
