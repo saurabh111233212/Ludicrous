@@ -38,6 +38,7 @@ dependencies:
 - vty
 - word-wrap
 - microlens
+- deepseq
 - parsec
 
 library:
