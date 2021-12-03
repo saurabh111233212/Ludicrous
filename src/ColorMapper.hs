@@ -20,7 +20,7 @@ keyWords = LuParser.reserved
 -- explicit mapping from a string to its Color
 colorMap :: Text -> [(Text, Color)]
 colorMap s = case runParser lineParser () "" s of
-    Left e -> error (concat $ map messageString (errorMessages e))
+    Left e -> error (concatMap messageString (errorMessages e))
     Right x -> x
 
 -- parser for a line
@@ -39,16 +39,25 @@ wsParser = do
     x <- many1 (oneOf " \t")
     return (pack x, C "whitespace")
 
+escape = do
+    d <- char '\\'
+    c <- oneOf "\\\"0nrvtbf" -- all the characters which can be escaped
+    return [d, c]
+
+nonEscape = noneOf "\\\"\0\n\r\v\t\b\f"
+
+character = fmap return nonEscape <|> escape
+
 -- parses string literals
 stringParser :: Stream s m Char => ParsecT s u m (Text, Color)
 stringParser = do
-    x <- (char '\"') *> many (noneOf "'\"\n'") <* (char '\"')
+    x <- char '\"' *> many (noneOf "'\"\n'") <* char '\"'
     return (pack ('\"' : x ++ ['\"']), C "string")
 
 -- parses character literals
 charParser :: Stream s m Char => ParsecT s u m (Text, Color)
 charParser = do
-    x <- (char '\'') *> many (noneOf "'\"\n'") <* (char '\'')
+    x <- char '\'' *> many (noneOf "'\"\n'") <* char '\''
     return (pack ('\'' : x ++ ['\'']), C "string")
 
 -- parses keywords
@@ -61,10 +70,10 @@ keyParser = do
 opParser :: Stream s m Char => ParsecT s u m (Text, Color)
 opParser = do
     x <- choice $ map string ["+", "-", "*", "/", "%", "=", "<", ">", ".", "not", "{", "}", "[", "]", "#", ";"]
-    return $ (pack x, C "operator")
+    return (pack x, C "operator")
 
 -- parses everything else
 miscParser :: Stream s m Char => ParsecT s u m (Text, Color)
 miscParser = do
     x <- many1 (noneOf " +-*{}[]=-><%#/.;\n")
-    return $ (pack x, C "text")
+    return (pack x, C "text")
