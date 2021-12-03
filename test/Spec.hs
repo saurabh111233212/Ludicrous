@@ -16,9 +16,6 @@ testParseFromText = "parsingTest" ~:
                     parseFromText (pack (getStringFromFile "test/bfs.lu")) ~=? Right wBfs
 
 
--- take a look at Parsec for parsing, to get location information as you parse
-
-
 
 -- | checks the pre and post colored sentence to make sure it's the same. 
 -- this might have to change, might need an index instead of a string

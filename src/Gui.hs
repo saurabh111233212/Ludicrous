@@ -24,9 +24,10 @@ import Text.Wrap
 import Path
 import Path.IO
 import Lens.Micro ((^.), (.~), (&))
-import Data.Text
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO
+import Control.DeepSeq
 
 {--
 -- This text editor is heavily inspired by Tom Sydney Kerckhove's tutorial, available at 
@@ -53,7 +54,12 @@ app = App {
     appChooseCursor = showFirstCursor,
     appHandleEvent = handleEvent,
     appStartEvent = pure,
-    appAttrMap = const $ attrMap mempty [(attrName "text", fg white), (attrName "bg", fg black)]
+    appAttrMap = const $ attrMap mempty [(attrName "text", fg white),
+                                         (attrName "bg", fg black),
+                                         (attrName "keyword", fg blue),
+                                         (attrName "whitespace", fg black),
+                                         (attrName "operator", fg red),
+                                         (attrName "string", fg green)]
 }
 
 -- handles terminal input. Should take a single argument, 
@@ -66,7 +72,7 @@ terminalInit = do
             -- gets the path for a file from the string x
             path <- resolveFile' x
             maybeContents <- forgivingAbsence $ Data.Text.IO.readFile (Path.fromAbsFile path)
-            let contents = fromMaybe Data.Text.empty maybeContents
+            let contents = fromMaybe T.empty maybeContents
             initialState <- openFile contents
             endState <- defaultMain app initialState
             let contents' = rebuildTextFieldCursor (cursor endState)
@@ -134,6 +140,7 @@ handleEvent s e =
             _ -> continue s
     _ -> continue s
 
+-- draws the widget for the current line on which the cursor is on. Modified for text wrapping
 selectedTextCursorWidget' :: n -> TextCursor -> Widget n
 selectedTextCursorWidget' n tc = let wgt = create_tc_widget tc in
   Widget Greedy Fixed $ do
@@ -145,7 +152,7 @@ selectedTextCursorWidget' n tc = let wgt = create_tc_widget tc in
 -- modified widget helper to wrap lines
 create_tc_widget :: TextCursor -> Widget n
 create_tc_widget tc =
-  txtWrap $
+  coloredTxtWrap $
     let t = sanitiseText $ rebuildTextCursor tc
      in if T.null t
           then T.pack " "
@@ -157,10 +164,42 @@ create_tfc_widget n (TextFieldCursor tfc) =
   flip foldNonEmptyCursor tfc $ \befores current afters ->
     vBox $
       Prelude.concat
-        [ Prelude.map textWidgetWrap befores,
+        [ Prelude.map coloredTxtWrap befores,
           [visible $ selectedTextCursorWidget' n current],
-          Prelude.map textWidgetWrap afters
+          Prelude.map coloredTxtWrap afters
         ]
+
+-- private function from Brick, does safe text width
+safeTextWidth :: Text -> Int
+safeTextWidth = V.safeWcswidth . T.unpack
+
+-- colored text wrapping widget function
+coloredTxtWrap :: Text -> Widget n
+coloredTxtWrap = txtWrapWith' defaultWrapSettings
+
+-- modified text wrappers to also take in color
+txtWrapWith' :: WrapSettings -> T.Text -> Widget n
+txtWrapWith' settings s =
+    Widget Greedy Fixed $ do
+      c <- getContext
+      let theLines = fixEmpty <$> wrapTextToLines settings (c^.availWidthL) s
+          fixEmpty l | T.null l = T.pack " "
+                     | otherwise = l
+      case force theLines of
+          [] -> return $ emptyResult & imageL .~ (V.text' (c^.attrL) (T.pack " "))
+          multiple ->
+              let maxLength = maximum $ safeTextWidth <$> multiple
+                  padding = V.charFill (c^.attrL) ' ' (c^.availWidthL - maxLength) (length lineImgs)
+                  lineImgs = lineImg <$> multiple
+                  createImage (text, attr) = V.text' 
+                    (attrMapLookup (attrName (attribute attr)) (ctxAttrMap c)) text
+                  lineImg lStr = let vals = colorMap lStr
+                                     vals' = map createImage vals
+                                     endspaces = V.text' 
+                                      (c^.attrL)
+                                      (T.replicate (maxLength - safeTextWidth lStr) (T.pack " ")) in
+                      foldr (V.<|>) endspaces vals'
+              in return $ emptyResult & imageL .~ (V.horizCat [V.vertCat lineImgs, padding])
 
 -- draws a GUI
 drawGUI :: GUI -> [Widget Name]
