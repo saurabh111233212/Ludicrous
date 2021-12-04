@@ -7,23 +7,34 @@ A Parser for Lu
 
 module LuParsecParser where
 
-import Control.Applicative hiding ((<|>))
+import Control.Applicative hiding ((<|>), many)
 import qualified Data.Char as Char
-import LuSyntax
--- import Parser (Parser)
--- import qualified Parser
+import LuSyntax hiding (Empty)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
 import qualified Test.QuickCheck as QC
+import Control.Monad (guard)
 
-import Text.Parsec as P hiding (Empty)
+
+import Text.Parsec hiding (Empty)
+import Text.Parsec.Error
+import Text.Parsec.Prim
+import Text.Parsec.Text
+import Text.Parsec.Pos
+import Text.Parsec.Char
+-- import Text.Megaparsec.Byte.Lexer
+
+import Prelude
 
 
--- alpha, digit, upper, lower, space :: Parser Char
-alpha = P.satisfy Char.isAlpha
-digit = P.satisfy Char.isDigit
-upper = P.satisfy Char.isUpper
-lower = P.satisfy Char.isLower
-space = P.satisfy Char.isSpace
+{-
+-- | Filter the parsing results by a predicate
+filter :: Stream s m Char => (a->Bool) -> ParsecT s u m a -> ParsecT s u m a
+filter f p = undefined {-P $ \s ->  do 
+                         (c , cs) <- parse p s
+                         guard (f c)
+                         return (c , cs)
+-}
+-}
 
 {-
 Testing your Parser
@@ -32,90 +43,94 @@ Testing your Parser
 
 
 prop_roundtrip_val :: Value -> Bool
-prop_roundtrip_val v = P.parse valueP (pretty v) == Right v
+prop_roundtrip_val v = parse valueP "" (pretty v) == Right v
 
 prop_roundtrip_exp :: Expression -> Bool
-prop_roundtrip_exp e = P.parse expP (pretty e) == Right e
+prop_roundtrip_exp e = parse expP "" (pretty e) == Right e
 
 prop_roundtrip_stat :: Statement -> Bool
-prop_roundtrip_stat s = P.parse statementP (pretty s) == Right s
+prop_roundtrip_stat s = parse statementP "" (pretty s) == Right s
 
 
--- wsP :: Parser a -> Parser a
-wsP p = p <* P.many P.space
+wsP :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
+wsP p = p <* many space
 
 test_wsP :: Test
 test_wsP =
   TestList
-    [ P.parse (wsP alpha) "a" ~?= Right 'a',
-      P.parse (P.many (wsP alpha)) "a b \n   \t c" ~?= Right "abc"
+    [ parse (wsP letter) "" "a" ~?= Right 'a',
+      parse (many (wsP letter)) "" "a b \n   \t c" ~?= Right "abc"
     ]
 
--- >>> runTestTT test_wsP
--- *** Exception: /Users/saurabhshah/CIS 552/project_t2-project/src/LuParsecParser.hs:51:56-66: error:
---     • Couldn't match expected type ‘s8 -> Either ParseError [Char]’
---                   with actual type ‘Either a11 [Char]’
---     • Possible cause: ‘Right’ is applied to too many arguments
---       In the second argument of ‘(~?=)’, namely ‘Right "abc"’
---       In the expression:
---         parse (P.many (wsP alpha)) "a b \n   \t c" ~?= Right "abc"
---       In the first argument of ‘TestList’, namely
---         ‘[parse (wsP alpha) "a" ~?= Right 'a',
---           parse (P.many (wsP alpha)) "a b \n   \t c" ~?= Right "abc"]’
--- (deferred type error)
+-- >>> runTestTT test_wsP                    
+-- Cases: 2  Tried: 2  Errors: 0  Failures: 0
+-- Counts {cases = 2, tried = 2, errors = 0, failures = 0}
 --
 
--- stringP :: String -> Parser ()
+stringP :: Stream s m Char => String -> ParsecT s u m ()
+stringP s = () <$ wsP (string s)
 
-stringP s = () <$ wsP (P.string s)
 
 test_stringP :: Test
 test_stringP =
   TestList
-    [ P.parse (stringP "a") "a" ~?= Right (),
-      P.parse (stringP "a") "b" ~?= Left "No parses",
-      P.parse (P.many (stringP "a")) "a  a" ~?= Right [(), ()]
+    [ parse (stringP "a") "" "a" ~?= Right (),
+      parse (stringP "a") "" "b" ~?= Left (mergeError (newErrorMessage (UnExpect "\"b\"") (initialPos "")) (newErrorMessage (Expect "\"a\"") (initialPos ""))),
+      parse (many (stringP "a")) "" "a  a" ~?= Right [(), ()]
     ]
 
--- >>> runTestTT test_stringP
+
+-- >>> runTestTT test_stringP                
+-- Cases: 3  Tried: 3  Errors: 0  Failures: 0
 -- Counts {cases = 3, tried = 3, errors = 0, failures = 0}
+--
+
 
 {-
 Define a parser that will accept a particular string `s`, returning a
 given value `x`, and also and consume any white space that follows.
 -}
 
---constP :: String -> a -> Parser a
+constP :: Stream s m Char => String -> a -> ParsecT s u m a
 constP s a = a <$ stringP s
+
 
 test_constP :: Test
 test_constP =
   TestList
-    [ P.parse (constP "&" 'a') "&  " ~?= Right 'a',
-      P.parse (P.many (constP "&" 'a')) "&   &" ~?= Right "aa"
+    [ parse (constP "&" 'a') "" "&  " ~?= Right 'a',
+      parse (many (constP "&" 'a')) "" "&   &" ~?= Right "aa"
     ]
 
--- >>> runTestTT test_constP
+-- >>> runTestTT test_constP                 
+-- Cases: 2  Tried: 2  Errors: 0  Failures: 0
+-- Counts {cases = 2, tried = 2, errors = 0, failures = 0}
+--
 
 {-
 We will also use `stringP` for some useful operations that parse between
 delimiters, consuming additional whitespace.
 -}
 
---parens :: Parser a -> Parser a
-parens x = P.between (stringP "(") x (stringP ")")
+parens :: Stream s m Char => ParsecT s u m a -> ParsecT s u m ()
+parens x = between (stringP "(") x (stringP ")")
 
---braces :: Parser a -> Parser a
-braces x = P.between (stringP "{") x (stringP "}")
+braces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m ()
+braces x = between (stringP "{") x (stringP "}")
 
--- >>> P.parse (many (brackets (constP "1" 1))) "[1] [  1]   [1 ]"
--- Right [1,1,1]
---brackets :: Parser a -> Parser a
-brackets x = P.between (stringP "[") x (stringP "]")
+
+-- >>> parse (many (parens (constP "1" 1))) "" "(1) (  1)   (1 )"
+-- Left (line 1, column 2):
+-- unexpected "1"
+-- expecting space or ")"
+--
+
+brackets :: Stream s m Char => ParsecT s u m a -> ParsecT s u m ()
+brackets x = between (stringP "[") x (stringP "]")
 
 -- parses between quotes
---quotes :: Parser a -> Parser a
-quotes x = P.between (P.char '\"') x (P.char '\"')
+quotes :: Stream s m Char => ParsecT s u m close -> ParsecT s u m Char
+quotes x = between (char '\"') x (char '\"')
 
 {-
 Parsing Constants
@@ -125,7 +140,7 @@ Now let's write parsers for the `Value` type, except for table constants
 (which we won't parse).
 -}
 
---valueP :: Parser Value
+valueP :: Stream s m Char => ParsecT s u m Value
 valueP = intValP <|> boolValP <|> nilValP <|> stringValP
 
 
@@ -135,23 +150,22 @@ four parsers should consume any following whitespace. You can make sure that hap
 by testing 'many' uses of the parser in a row.
 -}
 
--- >>> P.parse (many intValP) "1 2\n 3"
+-- >>> parse (many intValP) "" "1 2\n 3"
 -- Right [IntVal 1,IntVal 2,IntVal 3]
+int :: (Read b, Stream s m Char) => ParsecT s u m b
+int = read <$> ((++) <$> string "-" <*> some digit <|> some digit)
 
-
-int = read <$> ((++) <$> string "-" <*> some P.digit <|> some P.digit)
-
---intValP :: Parser Value
+intValP :: Stream s m Char => ParsecT s u m Value
 intValP = IntVal <$> wsP int
 
--- >>> P.parse (many boolValP) "true false\n true"
+-- >>> parse (many boolValP) "" "true false\n true"
 -- Right [BoolVal True,BoolVal False,BoolVal True]
---boolValP :: Parser Value
+boolValP :: Stream s m Char => ParsecT s u m Value
 boolValP = BoolVal <$> (constP "true" True <|> constP "false" False)
 
--- >>> P.parse (many nilValP) "nil nil\n nil"
+-- >>> parse (many nilValP) "" "nil nil\n nil"
 -- Right [NilVal,NilVal,NilVal]
---nilValP :: Parser Value
+nilValP :: Stream s m Char => ParsecT s u m Value
 nilValP = constP "nil" NilVal
 
 {-
@@ -160,17 +174,19 @@ quotes. For simplicity, Lu does not allow escaped quote characters to appear
 in literal strings.
 -}
 
---stringValP :: Parser Value
-stringValP = StringVal <$> wsP (quotes (P.many $ P.satisfy (/= '\"')))
+stringValP :: ParsecT s u m Value
+stringValP = undefined --StringVal <$> wsP (quotes (many $ satisfy (/= '\"')))
+
 
 test_stringValP :: Test
 test_stringValP =
   TestList
-    [ P.parse stringValP "\"a\"" ~?= Right (StringVal "a"),
-      P.parse stringValP "\"a\\\"\"" ~?= Right (StringVal "a\\"),
-      P.parse (P.many stringValP) "\"a\"   \"b\"" ~?= Right [StringVal "a", StringVal "b"],
-      P.parse (P.many stringValP) "\" a\"   \"b\"" ~?= Right [StringVal " a", StringVal "b"]
+    [ parse stringValP "" "\"a\"" ~?= Right (StringVal "a"),
+      parse stringValP "" "\"a\\\"\"" ~?= Right (StringVal "a\\"),
+      parse (many stringValP) "" "\"a\"   \"b\"" ~?= Right [StringVal "a", StringVal "b"],
+      parse (many stringValP) "" "\" a\"   \"b\"" ~?= Right [StringVal " a", StringVal "b"]
     ]
+
 
 -- >>> runTestTT test_stringValP
 -- Counts {cases = 4, tried = 4, errors = 0, failures = 0}
@@ -195,12 +211,13 @@ However, this code *won't* work until you complete all the parts of this section
 -}
 
 --expP :: Parser Expression
-expP = compP
+expP :: ParsecT s u m Expression
+expP = undefined {-compP
   where
-    compP = catP `P.chainl1` opAtLevel (level Gt)
-    catP = sumP `P.chainl1` opAtLevel (level Concat)
-    sumP = prodP `P.chainl1` opAtLevel (level Plus)
-    prodP = uopexpP `P.chainl1` opAtLevel (level Times)
+    compP = catP `chainl1` opAtLevel (level Gt)
+    catP = sumP `chainl1` opAtLevel (level Concat)
+    sumP = prodP `chainl1` opAtLevel (level Plus)
+    prodP = uopexpP `chainl1` opAtLevel (level Times)
     uopexpP =
       baseP
         <|> Op1 <$> uopP <*> uopexpP
@@ -210,21 +227,24 @@ expP = compP
         <|> parens expP
         <|> Val <$> valueP
 
+-}
+
 -- | Parse an operator at a specified precedence level
 --opAtLevel :: Int -> Parser (Expression -> Expression -> Expression)
-opAtLevel l = flip Op2 <$> P.filter (\x -> level x == l) bopP
+opAtLevel l = undefined --flip Op2 <$> filter (\x -> level x == l) bopP
 
 {-
 A variable is a prefix followed by some number of indexing terms or just a name.
 We've also done this one for you.
 -}
 
--- >>>  P.parse (many varP) "x y z"
+-- >>>  parse (many varP) "x y z"
 -- Right [Name "x",Name "y",Name "z"]
--- >>> P.parse varP "(x.y[1]).z"
+-- >>> parse varP "(x.y[1]).z"
 -- Right (Dot (Var (Proj (Var (Dot (Var (Name "x")) "y")) (Val (IntVal 1)))) "z")
 --varP :: Parser Var
-varP = mkVar <$> prefixP <*> some indexP <|> Name <$> nameP
+varP :: ParsecT s u m Var
+varP = undefined {-mkVar <$> prefixP <*> some indexP <|> Name <$> nameP
   where
     mkVar :: Expression -> [Expression -> Var] -> Var
     mkVar e l = foldr1 (\f p u -> p (Var (f u))) l e
@@ -234,8 +254,9 @@ varP = mkVar <$> prefixP <*> some indexP <|> Name <$> nameP
 
     --indexP :: Parser (Expression -> Var)
     indexP =
-      flip Dot <$> (P.string "." *> nameP)
+      flip Dot <$> (string "." *> nameP)
         <|> flip Proj <$> brackets expP
+-}
 
 {-
 Define an expression parser for names. Names can be any sequence of upper and
@@ -270,17 +291,18 @@ reserved =
     "while"
   ]
 
--- >>> P.parse (many nameP) "x sfds _ nil"
+-- >>> parse (many nameP) "x sfds _ nil"
 -- Right ["x","sfds","_"]
 --nameP :: Parser Name
-nameP = P.filter (`notElem` reserved) (wsP $ (++) <$> some (alpha <|> P.upper <|> P.lower <|> P.satisfy (== '_')) <*> P.many (alpha <|> P.digit <|> P.upper <|> P.lower <|> P.satisfy (== '_')))
+nameP :: ParsecT s u m Name
+nameP = undefined --filter (`notElem` reserved) (wsP $ (++) <$> some (letter <|> upper <|> lower <|> satisfy (== '_')) <*> many (letter <|> digit <|> upper <|> lower <|> satisfy (== '_')))
 
 {-
 Now write parsers for the unary and binary operators. Make sure you check out the [manual](LuManual.md)
 or the LuSyntax module for the list of all possible operators. The tests are not exhaustive.
 -}
 
--- >>> P.parse (many uopP) "- - #"
+-- >>> parse (many uopP) "- - #"
 -- Right [Neg,Neg,Len]
 --uopP :: Parser Uop
 uopP =
@@ -290,7 +312,7 @@ uopP =
         <|> stringP "#" *> pure Len
     )
 
--- >>> P.parse (many bopP) "+ >= .."
+-- >>> parse (many bopP) "+ >= .."
 -- Right [Plus,Gt]
 --bopP :: Parser Bop
 bopP =
@@ -312,19 +334,20 @@ bopP =
 Finally write a parser for table construction:
 -}
 
--- >>> P.parse tableConstP "{ x = 2, [3] = false }"
+-- >>> parse tableConstP "{ x = 2, [3] = false }"
 -- Right (TableConst [FieldName "x" (Val (IntVal 2)),FieldKey (Val (IntVal 3)) (Val (BoolVal False))])
+
 --tableConstP :: Parser Expression
-tableConstP =
+tableConstP = undefined {-
   TableConst
     <$> braces
-      ( P.sepBy
+      ( sepBy
           ( (FieldName <$> nameP <* stringP "=" <*> expP)
               <|> (FieldKey <$> brackets expP <* stringP "=" <*> expP)
           )
           (stringP ",")
       )
-
+-}
 {-
 At this point you should be able to quickcheck the `prop_roundtrip_exp` property.
 
@@ -335,16 +358,16 @@ Finally, define a parser for statements ...
 -}
 
 --ifP :: Parser Statement
-ifP =
+ifP = undefined {-
   If <$> (stringP "if" *> expP)
     <*> (stringP "then" *> blockP)
-    <*> (constP "end" (Block []) <|> P.between (stringP "else") blockP (stringP "end"))
-
+    <*> (constP "end" (Block []) <|> between (stringP "else") blockP (stringP "end"))
+-}
 --assignP :: Parser Statement
 assignP = Assign <$> varP <* stringP "=" <*> expP
 
 --whileP :: Parser Statement
-whileP = While <$> (stringP "while" *> expP) <*> P.between (stringP "do") blockP (stringP "end")
+whileP = undefined-- While <$> (stringP "while" *> expP) <*> between (stringP "do") blockP (stringP "end")
 
 -- emptyP :: Parser Statement
 emptyP = constP ";" Empty
@@ -353,14 +376,14 @@ emptyP = constP ";" Empty
 repeatP = Repeat <$> (stringP "repeat" *> blockP) <*> (stringP "until" *> expP)
 
 -- statementP :: Parser Statement
-statementP = emptyP <|> ifP <|> whileP <|> repeatP <|> assignP
+statementP = undefined --emptyP <|> ifP <|> whileP <|> repeatP <|> assignP
 
 {-
 ... and one for blocks.
 -}
 
 --blockP :: Parser Block
-blockP = Block <$> P.many statementP
+blockP = Block <$> many statementP
 
 {-
 At this point you should be able to quickcheck the `prop_roundtrip_stat` property.
@@ -369,72 +392,72 @@ Parsing Expressions and Files
 -----------------------------
 -}
 
-parseLuExp :: String -> Either P.ParseError Expression
-parseLuExp = P.parse expP
+--parseLuExp :: String -> Either ParseError Expression
+parseLuExp = parse expP
 
-parseLuStat :: String -> Either P.ParseError Statement
-parseLuStat = P.parse statementP
+--parseLuStat :: String -> Either ParseError Statement
+parseLuStat = parse statementP
 
-parseLuFile :: String -> IO (Either P.ParseError Block)
-parseLuFile = P.parseFromFile (const <$> blockP <*> P.eof)
+-- parseLuFile :: String -> IO (Either ParseError Block)
+parseLuFile = undefined --parseFromFile (const <$> blockP <*> eof)
 
 {-
 Unit Tests
 ---------
 
 These unit tests summarize the tests given above.
--}
+
 
 test_comb =
   "parsing combinators"
     ~: TestList
-      [ P.parse (wsP alpha) "a" ~?= Right 'a',
-        P.parse (P.many (wsP alpha)) "a b \n   \t c" ~?= Right "abc",
-        P.parse (stringP "a") "a" ~?= Right (),
-        P.parse (stringP "a") "b" ~?= Left "No parses",
-        P.parse (P.many (stringP "a")) "a  a" ~?= Right [(), ()],
-        P.parse (constP "&" 'a') "&  " ~?= Right 'a',
-        P.parse (P.many (constP "&" 'a')) "&   &" ~?= Right "aa",
-        P.parse (P.many (brackets (constP "1" 1))) "[1] [  1]   [1 ]" ~?= Right [1, 1, 1]
+      [ parse (wsP letter) "a" ~?= Right 'a',
+        parse (many (wsP letter)) "a b \n   \t c" ~?= Right "abc",
+        parse (stringP "a") "a" ~?= Right (),
+        parse (stringP "a") "b" ~?= Left "No parses",
+        parse (many (stringP "a")) "a  a" ~?= Right [(), ()],
+        parse (constP "&" 'a') "&  " ~?= Right 'a',
+        parse (many (constP "&" 'a')) "&   &" ~?= Right "aa",
+        parse (many (brackets (constP "1" 1))) "[1] [  1]   [1 ]" ~?= Right [1, 1, 1]
       ]
 
 test_value =
   "parsing values"
     ~: TestList
-      [ P.parse (P.many intValP) "1 2\n 3" ~?= Right [IntVal 1, IntVal 2, IntVal 3],
-        P.parse (P.many boolValP) "true false\n true" ~?= Right [BoolVal True, BoolVal False, BoolVal True],
-        P.parse (P.many nilValP) "nil nil\n nil" ~?= Right [NilVal, NilVal, NilVal],
-        P.parse stringValP "\"a\"" ~?= Right (StringVal "a"),
-        P.parse stringValP "\"a\\\"\"" ~?= Right (StringVal "a\\"),
-        P.parse (P.many stringValP) "\"a\"   \"b\"" ~?= Right [StringVal "a", StringVal "b"],
-        P.parse (P.many stringValP) "\" a\"   \"b\"" ~?= Right [StringVal " a", StringVal "b"]
+      [ parse (many intValP) "1 2\n 3" ~?= Right [IntVal 1, IntVal 2, IntVal 3],
+        parse (many boolValP) "true false\n true" ~?= Right [BoolVal True, BoolVal False, BoolVal True],
+        parse (many nilValP) "nil nil\n nil" ~?= Right [NilVal, NilVal, NilVal],
+        parse stringValP "\"a\"" ~?= Right (StringVal "a"),
+        parse stringValP "\"a\\\"\"" ~?= Right (StringVal "a\\"),
+        parse (many stringValP) "\"a\"   \"b\"" ~?= Right [StringVal "a", StringVal "b"],
+        parse (many stringValP) "\" a\"   \"b\"" ~?= Right [StringVal " a", StringVal "b"]
       ]
 
 test_exp =
   "parsing expressions"
     ~: TestList
-      [ P.parse (P.many varP) "x y z" ~?= Right [Name "x", Name "y", Name "z"],
-        P.parse varP "(x.y[1]).z" ~?= Right (Dot (Var (Proj (Var (Dot (Var (Name "x")) "y")) (Val (IntVal 1)))) "z"),
-        P.parse (P.many nameP) "x sfds _ nil" ~?= Right ["x", "sfds", "_"],
-        P.parse (P.many uopP) "- - #" ~?= Right [Neg, Neg, Len],
-        P.parse (P.many bopP) "+ >= .." ~?= Right [Plus, Ge, Concat],
-        P.parse tableConstP "{ x = 2, [3] = false }"
+      [ parse (many varP) "x y z" ~?= Right [Name "x", Name "y", Name "z"],
+        parse varP "(x.y[1]).z" ~?= Right (Dot (Var (Proj (Var (Dot (Var (Name "x")) "y")) (Val (IntVal 1)))) "z"),
+        parse (many nameP) "x sfds _ nil" ~?= Right ["x", "sfds", "_"],
+        parse (many uopP) "- - #" ~?= Right [Neg, Neg, Len],
+        parse (many bopP) "+ >= .." ~?= Right [Plus, Ge, Concat],
+        parse tableConstP "{ x = 2, [3] = false }"
           ~?= Right (TableConst [FieldName "x" (Val (IntVal 2)), FieldKey (Val (IntVal 3)) (Val (BoolVal False))])
       ]
 
 test_stat =
   "parsing statements"
     ~: TestList
-      [ P.parse statementP ";" ~?= Right Empty,
-        P.parse statementP "x=3" ~?= Right (Assign (Name "x") (Val (IntVal 3))),
-        P.parse statementP "if x then y=nil else end"
+      [ parse statementP ";" ~?= Right Empty,
+        parse statementP "x=3" ~?= Right (Assign (Name "x") (Val (IntVal 3))),
+        parse statementP "if x then y=nil else end"
           ~?= Right (If (Var (Name "x")) (Block [Assign (Name "y") (Val NilVal)]) (Block [])),
-        P.parse statementP "while nil do end"
+        parse statementP "while nil do end"
           ~?= Right (While (Val NilVal) (Block [])),
-        P.parse statementP "repeat ; ; until false"
+        parse statementP "repeat ; ; until false"
           ~?= Right (Repeat (Block [Empty, Empty]) (Val (BoolVal False)))
       ]
-
+-}
 -- >>> runTestTT test_stat
 
 {-
@@ -442,11 +465,11 @@ Testing summary
 ---------------
 -}
 
-test_all :: IO Counts
-test_all = runTestTT $ TestList [test_comb, test_value, test_exp, test_stat]
+--test_all :: IO Counts
+--test_all = runTestTT $ TestList [test_comb, test_value, test_exp, test_stat]
 
 -- >>> test_all
-
+{-
 qc :: IO ()
 qc = do
   putStrLn "roundtrip_val"
@@ -456,6 +479,4 @@ qc = do
   putStrLn "roundtrip_stat"
   QC.quickCheck prop_roundtrip_stat
 
-
-
-
+-}

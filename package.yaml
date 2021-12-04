@@ -39,6 +39,7 @@ dependencies:
 - word-wrap
 - microlens
 - parsec
+- megaparsec
 
 library:
   source-dirs: src
