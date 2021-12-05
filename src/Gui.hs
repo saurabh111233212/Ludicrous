@@ -190,7 +190,7 @@ safeTextWidth = V.safeWcswidth . T.unpack
 
 -- colored text wrapping widget function
 coloredTxtWrap :: Text -> Widget n
-coloredTxtWrap = txtWrapWith' (defaultWrapSettings {breakLongWords = True})
+coloredTxtWrap = txtWrapWith' defaultWrapSettings
 
 -- modified text wrappers to also take in color
 txtWrapWith' :: WrapSettings -> T.Text -> Widget n
@@ -218,7 +218,7 @@ txtWrapWith' settings s =
 
 
 coloredTxtWrapCursor :: n -> TextCursor -> Widget n
-coloredTxtWrapCursor = txtWrapWithCursor (defaultWrapSettings {breakLongWords = True})
+coloredTxtWrapCursor = txtWrapWithCursor defaultWrapSettings
 
 txtWrapWithCursor :: WrapSettings -> n -> TextCursor -> Widget n
 txtWrapWithCursor settings n tc =

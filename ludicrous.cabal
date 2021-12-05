@@ -29,7 +29,6 @@ library
       ColorMapper
       Formatter
       Gui
-      LuParsecParser
       LuParser
       LuSyntax
       Parser

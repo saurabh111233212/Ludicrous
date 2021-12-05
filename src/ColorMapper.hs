@@ -8,7 +8,6 @@ import Text.Parsec
 import Text.Parsec.Error
 import Text.Parsec.Prim
 import Text.Parsec.Text
--- import Text.Parsec.Token
 
 
 newtype Color = C {attribute :: String} deriving (Eq, Show)
@@ -38,15 +37,6 @@ wsParser :: Stream s m Char => ParsecT s u m (Text, Color)
 wsParser = do
     x <- many1 (oneOf " \t")
     return (pack x, C "whitespace")
-
-escape = do
-    d <- char '\\'
-    c <- oneOf "\\\"0nrvtbf" -- all the characters which can be escaped
-    return [d, c]
-
-nonEscape = noneOf "\\\"\0\n\r\v\t\b\f"
-
-character = fmap return nonEscape <|> escape
 
 -- parses string literals
 stringParser :: Stream s m Char => ParsecT s u m (Text, Color)
