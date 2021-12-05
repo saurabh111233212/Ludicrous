@@ -39,8 +39,8 @@ dependencies:
 - word-wrap
 - microlens
 - deepseq
-- parsec
 - split
+- parsec
 
 library:
   source-dirs: src

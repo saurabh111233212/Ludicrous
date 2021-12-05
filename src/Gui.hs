@@ -84,18 +84,14 @@ terminalInit = do
         -- no arguments passed or more than one argument passed
         _ -> die "Error: Usage - project-cis552-exe [filename]"
 
+-- | saves file and formats it, if it is well-formed
 saveFile :: Text -> Path Abs File -> IO ()
 saveFile txt path = do
-  Data.Text.IO.writeFile (Path.fromAbsFile path) txt
-  let relPath = Prelude.init $ Prelude.last (Data.List.Split.splitOn "/" (show path))
-  parse <- parseLuFile relPath
-  case parse of 
+  case parseFromText txt of
     Left pe -> do
-      Prelude.putStr ("Error parsing: " ++ pe)
-    Right block -> do
-      let t = T.pack (pretty block)
-      Prelude.putStr "Successfully reformatted"
-      Data.Text.IO.writeFile (Path.fromAbsFile path) t
+      Prelude.putStr ("Error parsing file: " ++ pe)
+      Data.Text.IO.writeFile (Path.fromAbsFile path) txt
+    Right block -> Data.Text.IO.writeFile (Path.fromAbsFile path) (formatBlock block)
 
 
 -- initial state, from opening a file to get text
@@ -110,13 +106,14 @@ openFile text = do
 
 -- formats text contained within a GUI, returns a new, formatted GUI
 format :: GUI -> GUI
-format s = let text = rebuildTextFieldCursor (cursor s)
-               block = parseFromText text
-               formatted = formatTree block in
-                 s {
-                   cursor = makeTextFieldCursor formatted,
-                   previous = Just s
-                 }
+format s = let text = rebuildTextFieldCursor (cursor s) in
+  case parseFromText text of
+    Left pe -> s
+    Right block -> let formatted = formatBlock block in
+      s {
+        cursor = makeTextFieldCursor formatted,
+        previous = Just s
+        }
 
 
 -- handles a Brick Event
