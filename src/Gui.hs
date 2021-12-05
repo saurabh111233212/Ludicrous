@@ -1,5 +1,7 @@
 module Gui   where
 
+
+import System.Exit
 import Brick
 import Brick.AttrMap
 import Brick.Widgets.Border
@@ -23,13 +25,13 @@ import Graphics.Vty.Input.Events
 import Text.Wrap
 import Path
 import Path.IO
-import Lens.Micro ((^.), (.~), (&))
-import Data.Text
+import Lens.Micro ((^.), (.~), (&), (%~), set)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO
+import Control.DeepSeq
 import LuParser
 import Data.List.Split (splitOn)
-
 
 {--
 -- This text editor is heavily inspired by Tom Sydney Kerckhove's tutorial, available at 
@@ -56,7 +58,12 @@ app = App {
     appChooseCursor = showFirstCursor,
     appHandleEvent = handleEvent,
     appStartEvent = pure,
-    appAttrMap = const $ attrMap mempty [(attrName "text", fg white), (attrName "bg", fg black)]
+    appAttrMap = const $ attrMap mempty [(attrName "text", fg white),
+                                         (attrName "bg", fg black),
+                                         (attrName "keyword", fg blue),
+                                         (attrName "whitespace", fg black),
+                                         (attrName "operator", fg red),
+                                         (attrName "string", fg green)]
 }
 
 -- handles terminal input. Should take a single argument, 
@@ -69,13 +76,13 @@ terminalInit = do
             -- gets the path for a file from the string x
             path <- resolveFile' x
             maybeContents <- forgivingAbsence $ Data.Text.IO.readFile (Path.fromAbsFile path)
-            let contents = fromMaybe Data.Text.empty maybeContents
+            let contents = fromMaybe T.empty maybeContents
             initialState <- openFile contents
             endState <- defaultMain app initialState
             let contents' = rebuildTextFieldCursor (cursor endState)
             saveFile contents' path
         -- no arguments passed or more than one argument passed
-        _ -> error "Error: Usage - project-cis552-exe [filename]"
+        _ -> die "Error: Usage - project-cis552-exe [filename]"
 
 saveFile :: Text -> Path Abs File -> IO ()
 saveFile txt path = do
@@ -86,9 +93,10 @@ saveFile txt path = do
     Left pe -> do
       Prelude.putStr ("Error parsing: " ++ pe)
     Right block -> do
-      let t = pack (pretty block)
+      let t = T.pack (pretty block)
       Prelude.putStr "Successfully reformatted"
       Data.Text.IO.writeFile (Path.fromAbsFile path) t
+
 
 -- initial state, from opening a file to get text
 openFile :: Text -> IO GUI
@@ -147,8 +155,9 @@ handleEvent s e =
             _ -> continue s
     _ -> continue s
 
+-- draws the widget for the current line on which the cursor is on. Modified for text wrapping
 selectedTextCursorWidget' :: n -> TextCursor -> Widget n
-selectedTextCursorWidget' n tc = let wgt = create_tc_widget tc in
+selectedTextCursorWidget' n tc = let wgt = createTcWidget tc in
   Widget Greedy Fixed $ do
     ctx <- getContext
     let distance = textCursorIndex tc
@@ -156,30 +165,99 @@ selectedTextCursorWidget' n tc = let wgt = create_tc_widget tc in
       render $ Brick.showCursor n loc wgt
 
 -- modified widget helper to wrap lines
-create_tc_widget :: TextCursor -> Widget n
-create_tc_widget tc =
-  txtWrap $
+createTcWidget :: TextCursor -> Widget n
+createTcWidget tc =
+  coloredTxtWrap $
     let t = sanitiseText $ rebuildTextCursor tc
      in if T.null t
           then T.pack " "
           else t
 
 -- modified widget creator to wrap lines
-create_tfc_widget :: n -> TextFieldCursor -> Widget n
-create_tfc_widget n (TextFieldCursor tfc) = 
+createTfcWidget :: n -> TextFieldCursor -> Widget n
+createTfcWidget n (TextFieldCursor tfc) = 
   flip foldNonEmptyCursor tfc $ \befores current afters ->
     vBox $
       Prelude.concat
-        [ Prelude.map textWidgetWrap befores,
-          [visible $ selectedTextCursorWidget' n current],
-          Prelude.map textWidgetWrap afters
+        [ Prelude.map coloredTxtWrap befores,
+          [visible $ coloredTxtWrapCursor n current],
+          Prelude.map coloredTxtWrap afters
         ]
+
+-- private function from Brick, does safe text width
+safeTextWidth :: Text -> Int
+safeTextWidth = V.safeWcswidth . T.unpack
+
+-- colored text wrapping widget function
+coloredTxtWrap :: Text -> Widget n
+coloredTxtWrap = txtWrapWith' (defaultWrapSettings {breakLongWords = True})
+
+-- modified text wrappers to also take in color
+txtWrapWith' :: WrapSettings -> T.Text -> Widget n
+txtWrapWith' settings s =
+    Widget Greedy Fixed $ do
+      c <- getContext
+      let theLines = fixEmpty <$> wrapTextToLines settings (c^.availWidthL) s
+          fixEmpty l | T.null l = T.pack " "
+                     | otherwise = l
+      case force theLines of
+          [] -> return $ emptyResult & imageL .~ V.text' (c^.attrL) (T.pack " ")
+          multiple ->
+              let maxLength = maximum $ safeTextWidth <$> multiple
+                  padding = V.charFill (c^.attrL) ' ' (c^.availWidthL - maxLength) (length lineImgs)
+                  lineImgs = lineImg <$> multiple
+                  createImage (text, attr) = V.text' 
+                    (attrMapLookup (attrName (attribute attr)) (ctxAttrMap c)) (sanitiseText text)
+                  lineImg lStr = let vals = colorMap lStr
+                                     vals' = map createImage vals
+                                     endspaces = V.text' 
+                                      (c^.attrL)
+                                      (T.replicate (maxLength - safeTextWidth lStr) (T.pack " ")) in
+                      foldr (V.<|>) endspaces vals'
+              in return $ emptyResult & imageL .~ V.horizCat [V.vertCat lineImgs, padding]
+
+
+coloredTxtWrapCursor :: n -> TextCursor -> Widget n
+coloredTxtWrapCursor = txtWrapWithCursor (defaultWrapSettings {breakLongWords = True})
+
+txtWrapWithCursor :: WrapSettings -> n -> TextCursor -> Widget n
+txtWrapWithCursor settings n tc =
+    Widget Greedy Fixed $ do
+      c <- getContext
+      let s = rebuildTextCursor tc
+          theLines = fixEmpty <$> wrapTextToLines settings (c^.availWidthL) s
+          fixEmpty l | T.null l = T.pack " "
+                     | otherwise = l
+      case force theLines of
+          [] -> let cursorLoc = [CursorLocation (Brick.Location (0, 0)) (Just n)] in
+            return $ set cursorsL cursorLoc (emptyResult & imageL .~ V.text' (c^.attrL) (T.pack " "))
+          multiple ->
+              let maxLength = maximum $ safeTextWidth <$> multiple
+                  loc = findPhysicalLocation tc (safeTextWidth <$> multiple)
+                  cursorLoc = [CursorLocation loc (Just n)]
+                  padding = V.charFill (c^.attrL) ' ' (c^.availWidthL - maxLength) (length lineImgs)
+                  lineImgs = lineImg <$> multiple
+                  createImage (text, attr) = V.text' 
+                    (attrMapLookup (attrName (attribute attr)) (ctxAttrMap c)) (sanitiseText text)
+                  lineImg lStr = let vals = colorMap lStr
+                                     vals' = map createImage vals
+                                     endspaces = V.text' 
+                                      (c^.attrL)
+                                      (T.replicate (maxLength - safeTextWidth lStr) (T.pack " ")) in
+                      foldr (V.<|>) endspaces vals' in
+                  return $ set cursorsL cursorLoc (emptyResult & imageL .~ V.horizCat [V.vertCat lineImgs, padding])
+
+findPhysicalLocation :: TextCursor -> [Int] -> Brick.Location
+findPhysicalLocation tc y = go (textCursorIndex tc) y 0 where
+  go i [] h = Brick.Location (i, h)
+  go i [x] h = if i > (x + 2) then go i [] (h + 1) else Brick.Location (i, h)
+  go i (x : xs) h = if i > x then go (i - x - 1) xs (h + 1) else Brick.Location (i, h)
 
 -- draws a GUI
 drawGUI :: GUI -> [Widget Name]
 drawGUI gui = [
     border $
-    padLeftRight 1 $ viewport Viewport Vertical $ create_tfc_widget Text (cursor gui)
+    padLeftRight 1 $ viewport Viewport Vertical $ createTfcWidget Text (cursor gui)
   ]
 
 -- gets current (partial) word
