@@ -21,7 +21,6 @@ import Text.Parsec.Prim
 import Text.Parsec.Text
 import Text.Parsec.Pos
 import Text.Parsec.Char
-import Text.Megaparsec.Byte.Lexer as L hiding (space)
 
 import Prelude hiding (filter)
 

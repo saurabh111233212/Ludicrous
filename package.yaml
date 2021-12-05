@@ -39,7 +39,7 @@ dependencies:
 - word-wrap
 - microlens
 - parsec
-- megaparsec
+- split
 
 library:
   source-dirs: src

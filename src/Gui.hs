@@ -27,6 +27,9 @@ import Lens.Micro ((^.), (.~), (&))
 import Data.Text
 import qualified Data.Text as T
 import Data.Text.IO
+import LuParser
+import Data.List.Split (splitOn)
+
 
 {--
 -- This text editor is heavily inspired by Tom Sydney Kerckhove's tutorial, available at 
@@ -75,7 +78,17 @@ terminalInit = do
         _ -> error "Error: Usage - project-cis552-exe [filename]"
 
 saveFile :: Text -> Path Abs File -> IO ()
-saveFile txt path = Data.Text.IO.writeFile (Path.fromAbsFile path) txt
+saveFile txt path = do
+  Data.Text.IO.writeFile (Path.fromAbsFile path) txt
+  let relPath = Prelude.init $ Prelude.last (Data.List.Split.splitOn "/" (show path))
+  parse <- parseLuFile relPath
+  case parse of 
+    Left pe -> do
+      Prelude.putStr ("Error parsing: " ++ pe)
+    Right block -> do
+      let t = pack (pretty block)
+      Prelude.putStr "Successfully reformatted"
+      Data.Text.IO.writeFile (Path.fromAbsFile path) t
 
 -- initial state, from opening a file to get text
 openFile :: Text -> IO GUI

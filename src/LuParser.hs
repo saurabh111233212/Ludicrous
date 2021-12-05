@@ -416,7 +416,10 @@ Testing summary
 test_all :: IO Counts
 test_all = runTestTT $ TestList [test_comb, test_value, test_exp, test_stat]
 
--- >>> test_all
+-- >>> test_all                                    
+-- Cases: 26  Tried: 26  Errors: 0  Failures: 0
+-- Counts {cases = 26, tried = 26, errors = 0, failures = 0}
+--
 
 qc :: IO ()
 qc = do
