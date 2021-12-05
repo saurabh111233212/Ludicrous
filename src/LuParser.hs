@@ -85,6 +85,7 @@ braces x = P.between (stringP "{") x (stringP "}")
 
 -- >>> P.parse (many (brackets (constP "1" 1))) "[1] [  1]   [1 ]"
 -- Right [1,1,1]
+--
 brackets :: Parser a -> Parser a
 brackets x = P.between (stringP "[") x (stringP "]")
 

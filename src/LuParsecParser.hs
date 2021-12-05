@@ -21,20 +21,22 @@ import Text.Parsec.Prim
 import Text.Parsec.Text
 import Text.Parsec.Pos
 import Text.Parsec.Char
--- import Text.Megaparsec.Byte.Lexer
+import Text.Megaparsec.Byte.Lexer as L hiding (space)
 
-import Prelude
+import Prelude hiding (filter)
 
 
-{-
+
 -- | Filter the parsing results by a predicate
-filter :: Stream s m Char => (a->Bool) -> ParsecT s u m a -> ParsecT s u m a
-filter f p = undefined {-P $ \s ->  do 
+filter :: Stream s m Char => (a -> Bool) -> ParsecT s u m a -> ParsecT s u m a
+filter f p = undefined 
+
+{-P $ \s ->  do 
                          (c , cs) <- parse p s
                          guard (f c)
                          return (c , cs)
 -}
--}
+
 
 {-
 Testing your Parser
@@ -102,35 +104,33 @@ test_constP =
       parse (many (constP "&" 'a')) "" "&   &" ~?= Right "aa"
     ]
 
--- >>> runTestTT test_constP                 
+-- >>> runTestTT test_constP                                   
 -- Cases: 2  Tried: 2  Errors: 0  Failures: 0
 -- Counts {cases = 2, tried = 2, errors = 0, failures = 0}
 --
+
 
 {-
 We will also use `stringP` for some useful operations that parse between
 delimiters, consuming additional whitespace.
 -}
 
-parens :: Stream s m Char => ParsecT s u m a -> ParsecT s u m ()
-parens x = between (stringP "(") x (stringP ")")
+parens :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
+parens = between (stringP "(") (stringP ")")
 
-braces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m ()
-braces x = between (stringP "{") x (stringP "}")
+braces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
+braces = between (stringP "{") (stringP "}")
 
 
--- >>> parse (many (parens (constP "1" 1))) "" "(1) (  1)   (1 )"
--- Left (line 1, column 2):
--- unexpected "1"
--- expecting space or ")"
---
+-- >>> parse (many (brackets (constP "1" 1))) "" "[1] [  1]   [1 ]"
+-- Right [1]
 
-brackets :: Stream s m Char => ParsecT s u m a -> ParsecT s u m ()
-brackets x = between (stringP "[") x (stringP "]")
+brackets :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
+brackets = (between (char '[') (char ']'))
 
 -- parses between quotes
-quotes :: Stream s m Char => ParsecT s u m close -> ParsecT s u m Char
-quotes x = between (char '\"') x (char '\"')
+quotes :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
+quotes = between (char '\"') (char '\"')
 
 {-
 Parsing Constants
@@ -174,8 +174,8 @@ quotes. For simplicity, Lu does not allow escaped quote characters to appear
 in literal strings.
 -}
 
-stringValP :: ParsecT s u m Value
-stringValP = undefined --StringVal <$> wsP (quotes (many $ satisfy (/= '\"')))
+stringValP :: Stream s m Char => ParsecT s u m Value
+stringValP = StringVal <$> wsP (quotes (many $ satisfy (/= '\"')))
 
 
 test_stringValP :: Test
@@ -188,8 +188,10 @@ test_stringValP =
     ]
 
 
--- >>> runTestTT test_stringValP
+-- >>> runTestTT test_stringValP             
+-- Cases: 4  Tried: 4  Errors: 0  Failures: 0
 -- Counts {cases = 4, tried = 4, errors = 0, failures = 0}
+--
 
 {-
 At this point you should be able to quickcheck the `prop_roundtrip_val` property. You'll need to do this
@@ -211,8 +213,8 @@ However, this code *won't* work until you complete all the parts of this section
 -}
 
 --expP :: Parser Expression
-expP :: ParsecT s u m Expression
-expP = undefined {-compP
+expP :: Stream s m Char => ParsecT s u m Expression
+expP = compP
   where
     compP = catP `chainl1` opAtLevel (level Gt)
     catP = sumP `chainl1` opAtLevel (level Concat)
@@ -227,11 +229,11 @@ expP = undefined {-compP
         <|> parens expP
         <|> Val <$> valueP
 
--}
 
 -- | Parse an operator at a specified precedence level
 --opAtLevel :: Int -> Parser (Expression -> Expression -> Expression)
-opAtLevel l = undefined --flip Op2 <$> filter (\x -> level x == l) bopP
+opAtLevel :: Stream s m Char => Int -> ParsecT s u m (Expression -> Expression -> Expression)
+opAtLevel l = flip Op2 <$> filter (\x -> level x == l) bopP
 
 {-
 A variable is a prefix followed by some number of indexing terms or just a name.
