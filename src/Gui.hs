@@ -245,7 +245,7 @@ findPhysicalLocation :: TextCursor -> [Int] -> Brick.Location
 findPhysicalLocation tc y = go (textCursorIndex tc) y 0
   where
     go i [] h = Brick.Location (i, h)
-    go i [x] h = if i > (x + 2) then go i [] (h + 1) else Brick.Location (i, h)
+    go i [x] h = Brick.Location (i, h)
     go i (x : xs) h = if i > x then go (i - x - 1) xs (h + 1) else Brick.Location (i, h)
 
 -- draws a GUI
