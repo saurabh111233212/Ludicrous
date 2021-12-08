@@ -1,9 +1,8 @@
 module AutoComplete where
 
-import Data.List as L
+import Data.List
 import LuParser (reserved)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
-import Trie as T
 
 
 -- | Dictionary containing initial used words (initially only )
@@ -45,8 +44,10 @@ distance (x : xs) (y : ys) = if x == y then distance xs ys else
 distances :: String -> [String] -> [(String, Int)]
 distances x = map (\y -> (y, distance x y))
 
+-- | finds the tuple with the lowest distance, given all (String, distance) pairs
 findBest :: [(String, Int)] -> Maybe String
-findBest distances = let     
+findBest distances = let
+    aux :: [(String, Int)] -> Maybe Int -> Maybe (String, Int)
     aux [] Nothing = Nothing
     aux ((s1, d1) : ps) Nothing = case aux ps (Just d1) of 
       Nothing -> Just (s1, d1)
@@ -58,7 +59,7 @@ findBest distances = let
 
 -- | Finds the closest suggestion to a word given a dictionary
 bestSuggestion :: String -> [String] -> Maybe String
-bestSuggestion word dict = if L.null dict then Nothing else
+bestSuggestion word dict = if null dict then Nothing else
   let allDistances = distances word dict in
     findBest allDistances
 
