@@ -32,6 +32,7 @@ library
       LuParser
       LuSyntax
       Parser
+      Trie
   other-modules:
       Paths_ludicrous
   hs-source-dirs:

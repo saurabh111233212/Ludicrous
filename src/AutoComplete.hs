@@ -1,8 +1,9 @@
 module AutoComplete where
 
-import Data.List
+import Data.List as L
 import LuParser (reserved)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
+import Trie as T
 
 
 -- | Dictionary containing initial used words (initially only )
@@ -57,7 +58,7 @@ findBest distances = let
 
 -- | Finds the closest suggestion to a word given a dictionary
 bestSuggestion :: String -> [String] -> Maybe String
-bestSuggestion word dict = if null dict then Nothing else
+bestSuggestion word dict = if L.null dict then Nothing else
   let allDistances = distances word dict in
     findBest allDistances
 
