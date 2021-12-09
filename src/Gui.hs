@@ -264,26 +264,39 @@ findPhysicalLocation tc y = go (textCursorIndex tc) y 0
 -- draws a GUI
 drawGUI :: GUI -> [Widget Name]
 drawGUI gui =
-  [ border $
-      padLeftRight 1 $ viewport Viewport Vertical $ createTfcWidget Text (cursor gui)
+  [ (border $ padLeftRight 1 $ viewport Viewport Vertical $ createTfcWidget Text (cursor gui))
+    <=>
+    createAutoCompleteWidget gui
   ]
+
+-- | Creates the widget for the autocomplete box 
+createAutoCompleteWidget :: GUI -> Widget n
+createAutoCompleteWidget gui = let text = T.pack ("Autocomplete suggestions: " ++ (getSuggestedWord gui)) in txt text
+
 
 -- | returns a new GUI with the text edited based on autocomplete
 completeWord :: GUI -> GUI 
-completeWord gui = let suggestion = getSuggestion gui in gui
+completeWord s = let newText = getCompletedText s in
+  s {
+    cursor = makeTextFieldCursor newText,
+    previous = Just s
+  }
 
+-- | Given a gui, gets the suggested word and appends it to text using autocomplete modoule
+getCompletedText :: GUI -> Text
+getCompletedText gui = let (rest, curr) = getCurrentWord gui in
+  let completedCurr = fromMaybe "" (bestSuggestion curr (dictionary gui)) in
+    T.pack $ (rest ++ " " ++ completedCurr)
 
--- | Given a gui, gets the suggested word using autocomplete modoule
-getSuggestion :: GUI -> String
-getSuggestion gui = fromMaybe "" (bestSuggestion (getCurrentWord gui) (dictionary gui))
+-- | Given a gui gets the suggested word
+getSuggestedWord :: GUI -> String 
+getSuggestedWord gui = let (rest, curr) = getCurrentWord gui in
+  fromMaybe "" (bestSuggestion curr (dictionary gui))
 
--- | gets current (partial) word
-getCurrentWord :: GUI -> String
+-- | returns a tuple (rest, currentWord)
+getCurrentWord :: GUI -> (String, String)
 getCurrentWord s = let text = rebuildTextFieldCursor (cursor s) in
-  case T.words text of
-    [] -> ""
-    l -> T.unpack (last l)
-
--- | gets dictionary of used words
-getDictionary :: GUI -> [String]
-getDictionary = dictionary
+  case words (T.unpack text) of
+    [] -> ("", "")
+    l -> let curr = last l in splitAt (length (T.unpack text) - length curr - 1) (T.unpack text)
+-- ^^^ Right now this just works for the last word.... how do I get the current word based on cursor position?
