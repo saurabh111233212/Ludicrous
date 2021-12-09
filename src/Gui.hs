@@ -18,7 +18,7 @@ import Data.List.Split (splitOn)
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.IO
+import Data.Text.IO hiding (getContents)
 import Formatter
 import qualified Graphics.Vty as V
 import Graphics.Vty.Attributes
@@ -28,6 +28,7 @@ import LuParser
 import LuSyntax hiding (Name)
 import Path
 import Path.IO
+import Prelude hiding (getContents)
 import System.Environment
 import System.Exit
 import Text.Wrap
@@ -73,21 +74,30 @@ app =
 
 -- handles terminal input. Should take a single argument,
 -- and open that as a file
+getContents :: Path Abs File -> IO Text
+getContents fpath = do
+  maybeContents <- forgivingAbsence $ Data.Text.IO.readFile (Path.fromAbsFile fpath)
+  return $ fromMaybe T.empty maybeContents
+
+
+
 terminalInit :: IO ()
 terminalInit = do
   args <- getArgs
   case args of
-    [x] -> do
-      -- gets the path for a file from the string x
-      path <- resolveFile' x
-      maybeContents <- forgivingAbsence $ Data.Text.IO.readFile (Path.fromAbsFile path)
-      let contents = fromMaybe T.empty maybeContents
-      initialState <- openFile contents
+    [x, y] -> do
+      -- get the dictionary contents
+      fpath <- resolveFile' x
+      dictPath <- resolveFile' y
+      textContents <- getContents fpath
+      dictContents <- getContents dictPath
+      initialState <- openFile textContents dictContents
       endState <- defaultMain app initialState
-      let contents' = rebuildTextFieldCursor (cursor endState)
-      saveFile contents' path
+      return $ rebuildTextFieldCursor (cursor endState)
+      saveFile textContents fpath
+
     -- no arguments passed or more than one argument passed
-    _ -> die "Error: Usage - project-cis552-exe [filename]"
+    _ -> die "Error: Usage ludicrous [text filename] [dictionary filename]"
 
 -- | saves file and formats it, if it is well-formed
 saveFile :: Text -> Path Abs File -> IO ()
@@ -99,12 +109,12 @@ saveFile txt path = do
     Right block -> Data.Text.IO.writeFile (Path.fromAbsFile path) (formatBlock block)
 
 -- initial state, from opening a file to get text
-openFile :: Text -> IO GUI
-openFile text = do
+openFile :: Text -> Text -> IO GUI
+openFile text dictText = do
   return
     GUI
       { cursor = makeTextFieldCursor text,
-        dictionary = [],
+        dictionary = initDict dictText,
         previous = Nothing
       }
 
@@ -153,6 +163,9 @@ handleEvent s e =
               'e' -> mDo $ Just . textFieldCursorSelectEndOfLine
               -- go to beginning of line
               'b' -> mDo $ Just . textFieldCursorSelectStartOfLine
+              -- use AutoComplete
+              't' -> continue $ completeWord s
+
               _ -> continue s
             _ -> continue s
     _ -> continue s
@@ -255,10 +268,22 @@ drawGUI gui =
       padLeftRight 1 $ viewport Viewport Vertical $ createTfcWidget Text (cursor gui)
   ]
 
--- gets current (partial) word
-getCurrentWord :: GUI -> String
-getCurrentWord = undefined
+-- | returns a new GUI with the text edited based on autocomplete
+completeWord :: GUI -> GUI 
+completeWord gui = let suggestion = getSuggestion gui in gui
 
--- gets dictionary of used words
+
+-- | Given a gui, gets the suggested word using autocomplete modoule
+getSuggestion :: GUI -> String
+getSuggestion gui = fromMaybe "" (bestSuggestion (getCurrentWord gui) (dictionary gui))
+
+-- | gets current (partial) word
+getCurrentWord :: GUI -> String
+getCurrentWord s = let text = rebuildTextFieldCursor (cursor s) in
+  case T.words text of
+    [] -> ""
+    l -> T.unpack (last l)
+
+-- | gets dictionary of used words
 getDictionary :: GUI -> [String]
 getDictionary = dictionary
