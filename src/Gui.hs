@@ -271,7 +271,7 @@ drawGUI gui =
 
 -- | Creates the widget for the autocomplete box 
 createAutoCompleteWidget :: GUI -> Widget n
-createAutoCompleteWidget gui = let text = T.pack ("Autocomplete suggestion: " ++ (getSuggestedWord gui)) in txt text
+createAutoCompleteWidget gui = str $ "Autocomplete suggestion: " ++ (getSuggestedWord gui)
 
 
 -- | returns a new GUI with the text edited based on autocomplete
