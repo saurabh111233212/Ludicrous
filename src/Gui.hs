@@ -300,3 +300,4 @@ getCurrentWord s = let text = rebuildTextFieldCursor (cursor s) in
     [] -> ("", "")
     l -> let curr = last l in splitAt (length (T.unpack text) - length curr - 1) (T.unpack text)
 -- ^^^ Right now this just works for the last word.... how do I get the current word based on cursor position?
+-- TextFieldCursorSelectNextWord ?? 
