@@ -93,8 +93,8 @@ terminalInit = do
       dictContents <- getContents dictPath
       initialState <- openFile textContents dictContents
       endState <- defaultMain app initialState
-      return $ rebuildTextFieldCursor (cursor endState)
-      saveFile textContents fpath
+      let contents' = rebuildTextFieldCursor (cursor endState)
+      saveFile contents' fpath
 
     -- no arguments passed or more than one argument passed
     _ -> die "Error: Usage ludicrous [text filename] [dictionary filename]"
@@ -271,7 +271,7 @@ drawGUI gui =
 
 -- | Creates the widget for the autocomplete box 
 createAutoCompleteWidget :: GUI -> Widget n
-createAutoCompleteWidget gui = let text = T.pack ("Autocomplete suggestions: " ++ (getSuggestedWord gui)) in txt text
+createAutoCompleteWidget gui = let text = T.pack ("Autocomplete suggestion: " ++ (getSuggestedWord gui)) in txt text
 
 
 -- | returns a new GUI with the text edited based on autocomplete
