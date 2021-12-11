@@ -41,6 +41,8 @@ dependencies:
 - deepseq
 - split
 - parsec
+- vector
+- monad-memo
 
 library:
   source-dirs: src

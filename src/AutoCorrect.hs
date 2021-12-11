@@ -4,6 +4,9 @@ import Data.List as L
 import LuParser (reserved)
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
 import Data.Text as T
+import qualified Data.Vector as V
+import Control.Monad.Memo
+
 
 
 -- | returns a dictionary with all the words in a given text
@@ -17,7 +20,7 @@ initialWords = []
 
 -- | checks to see if a given word is in the diciontary
 isInDict :: String -> [String] -> Bool
-isInDict = elem 
+isInDict = L.elem 
 
 -- | checks if all words are in the dictionary
 allWordsInDict :: [String] -> [String] -> Bool
@@ -25,26 +28,27 @@ allWordsInDict dict = L.foldr (\y acc -> y `isInDict` dict && acc) True
 
 -- | adds a word to the dictionary
 addWord :: String -> [String] -> [String]
-addWord w dict = if w `elem` dict then dict else w : dict
+addWord w dict = if w `L.elem` dict then dict else w : dict
 
 deleteWord :: String -> [String] -> [String]
 deleteWord w = aux w []
  where
   aux :: String -> [String] -> [String] -> [String]
-  aux w rest (word : words) = if w == word then rest ++ words else aux w (word : rest) words
+  aux w rest (word : words) = if w == word then rest L.++ words else aux w (word : rest) words
   aux w rest [] = rest
 
 -- | Finds the distance (Levenshtein) between two strings
 distance :: String -> String -> Int
-distance "" "" = 0
-distance xs "" = L.length xs
-distance "" ys = L.length ys
-distance (x : xs) (y : ys) = if x == y then distance xs ys else 
-  L.minimum [
-            1 + distance (x : xs) (ys), 
-            1 + distance (xs) (y : ys),
-            1 + distance xs ys
-          ]
+distance s t = startEvalMemo $ distance' ((V.fromList s), (V.fromList t))
+
+-- uses vectors for better runtime 
+distance' :: (MonadMemo (V.Vector Char, V.Vector Char) Int m) => (V.Vector Char, V.Vector Char) -> m Int
+distance' (s, t) = if V.null s then return $ V.length t else if V.null t then return $ V.length s else
+  if V.last s == V.last t then memo distance' ((V.init s), (V.init t)) else do
+    d1 <- memo distance' ((V.init s), t)
+    d2 <- memo distance' ((V.init s), (V.init t))
+    d3 <- memo distance' (s, (V.init t))
+    return $ 1 + L.minimum [d1, d2, d3]
 
 -- | Finds the distances between a given string and a list of strings
 distances :: String -> [String] -> [(String, Int)]
