@@ -1,4 +1,4 @@
-module AutoComplete where
+module AutoCorrect where
 
 import Data.List as L
 import LuParser (reserved)

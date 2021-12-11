@@ -98,17 +98,16 @@ give
 day
 most
 us
-especially
 special
 capability	neither
 eliminate	quit
 elite	quite
 else	quote
-elsewhere	recipe
-e-mail	Recognition
+recipe
+e-mail	
 embrace	refugee
 emerge	refuse
-emergency	regard
+regard
 emotion	scope
 fewer	score
 fiber	scream
@@ -120,7 +119,7 @@ forever	take
 forget	tale
 form	talent
 formal	ultimately
-formation	unable
+unable
 gaze	uncle
 gear	under
 gender	undergo
@@ -135,15 +134,39 @@ highway	violation
 holiday	wealthy
 holy	weapon
 home	wear
-illustrate	weather
+weather
 image	wedding
 week
 impact	yard
 implement	yeah
-implication	year
+year
 income	yell
 yellow
-journalist	yes
+yes
 journey	
 joy	zone
 judge	zany
+not
+repeat
+and
+break
+do
+else
+elseif
+end
+false
+for
+function
+goto
+if
+in
+local
+nil
+not
+or
+repeat
+return
+then
+true
+until
+while

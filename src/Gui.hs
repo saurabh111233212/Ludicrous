@@ -1,6 +1,6 @@
 module Gui where
 
-import AutoComplete
+import AutoCorrect
 import Brick
 import Brick.AttrMap
 import Brick.Widgets.Border
@@ -47,9 +47,24 @@ textCursorSelectEndWord tc =
               | otherwise -> tc
           | otherwise -> goRight
 
+textCursorSelectBeginWord :: TextCursor -> TextCursor
+textCursorSelectBeginWord tc =
+  let goLeft = maybe tc textCursorSelectBeginWord (textCursorSelectPrev tc)
+   in case textCursorPrevChar tc of
+        Nothing -> tc
+        Just p
+          | isSpace p -> case textCursorNextChar tc of
+            Nothing -> goLeft
+            Just n
+              | isSpace n -> goLeft
+              | otherwise -> tc
+          | otherwise -> goLeft
 
 textFieldCursorSelectEndWord :: TextFieldCursor -> TextFieldCursor
 textFieldCursorSelectEndWord = textFieldCursorSelectedL %~ textCursorSelectEndWord
+
+textFieldCursorSelectBeginWord :: TextFieldCursor -> TextFieldCursor
+textFieldCursorSelectBeginWord = textFieldCursorSelectedL %~ textCursorSelectBeginWord
 {--
 -- This text editor is heavily inspired by Tom Sydney Kerckhove's tutorial, available at
 -- <https://www.youtube.com/watch?v=Kmf3lnln1BI>
@@ -181,7 +196,7 @@ handleEvent s e =
               -- go to beginning of line
               'b' -> mDo $ Just . textFieldCursorSelectStartOfLine
               -- use AutoComplete
-              't' -> continue $ completeWord s
+              't' -> continue $ correctWord s
               _ -> continue s
             _ -> continue s
     _ -> continue s
@@ -291,9 +306,9 @@ createAutoCompleteWidget :: GUI -> Widget n
 createAutoCompleteWidget gui = str $ "Autocomplete suggestion: " ++ (getSuggestedWord gui)
 
 
--- | returns a new GUI with the text edited based on autocomplete
-completeWord :: GUI -> GUI 
-completeWord s = case getCompletedTextCursor s of
+-- | returns a new GUI with the text edited based on autocorrect, if successful 
+correctWord :: GUI -> GUI 
+correctWord s = case getCorrectedTextCursor s of
   Nothing -> s
   Just c ->
     s {
@@ -301,12 +316,13 @@ completeWord s = case getCompletedTextCursor s of
       previous = Just s
       }
 
-getCompletedTextCursor :: GUI -> Maybe TextFieldCursor
-getCompletedTextCursor gui = do
+-- | Given a gui, attempts to return a textFieldCursor with the current word corrected
+getCorrectedTextCursor :: GUI -> Maybe TextFieldCursor
+getCorrectedTextCursor gui = do
   let curr = getCurrentWord gui
   let sug = getSuggestedWord gui
-  cursor' <- removeN (length curr) (cursor gui)
-  cursor'' <- foldr textFieldCursorInsertChar (Just $ cursor') (reverse sug)
+  cursor' <- removeN (length curr) (textFieldCursorSelectEndWord $ cursor gui) -- delete current word
+  cursor'' <- foldr textFieldCursorInsertChar (Just $ cursor') (reverse sug) -- insert corrected word
   return $ textFieldCursorSelectEndWord cursor''
 
 
@@ -323,12 +339,12 @@ getSuggestedWord :: GUI -> String
 getSuggestedWord gui = let curr = getCurrentWord gui in
   fromMaybe "" (bestSuggestion curr (dictionary gui))
 
--- | returns a tuple (before, currentWord, after)
+-- | returns the current word we are in
 getCurrentWord :: GUI -> String
 getCurrentWord s =
   let text = rebuildTextFieldCursor (cursor s) in
-  case words (T.unpack text) of
-    [] -> ""
-    l -> last l
--- ^^^ Right now this just works for the last word.... how do I get the current word based on cursor position?
--- textFieldCursorSelection ?? 
+  let (startLine, startCol) = textFieldCursorSelection $ textFieldCursorSelectBeginWord (cursor s) in
+  let (endLine, endCol) = textFieldCursorSelection $ textFieldCursorSelectEndWord (cursor s) in
+  T.unpack $ T.take (endCol - startCol) (T.drop startCol text)
+-- ^ how do I get the correct position when lines might be of many different length?
+-- so far this works for a single line

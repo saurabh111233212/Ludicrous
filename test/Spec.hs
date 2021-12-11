@@ -2,7 +2,7 @@ import Test.HUnit
 import Test.QuickCheck
 import LuSyntax
 import ColorMapper
-import AutoComplete
+import AutoCorrect
 import Formatter
 import Data.Text
 
