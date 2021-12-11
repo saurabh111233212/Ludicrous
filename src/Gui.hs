@@ -14,6 +14,7 @@ import Cursor.List.NonEmpty
 import Cursor.Text
 import Cursor.TextField
 import Cursor.Types
+import Data.Char
 import Data.List.Split (splitOn)
 import Data.Maybe
 import Data.Text (Text)
@@ -33,6 +34,22 @@ import System.Environment
 import System.Exit
 import Text.Wrap
 
+textCursorSelectEndWord :: TextCursor -> TextCursor
+textCursorSelectEndWord tc =
+  let goRight = maybe tc textCursorSelectEndWord (textCursorSelectNext tc)
+   in case textCursorNextChar tc of
+        Nothing -> tc
+        Just p
+          | isSpace p -> case textCursorPrevChar tc of
+            Nothing -> goRight
+            Just n
+              | isSpace n -> goRight
+              | otherwise -> tc
+          | otherwise -> goRight
+
+
+textFieldCursorSelectEndWord :: TextFieldCursor -> TextFieldCursor
+textFieldCursorSelectEndWord = textFieldCursorSelectedL %~ textCursorSelectEndWord
 {--
 -- This text editor is heavily inspired by Tom Sydney Kerckhove's tutorial, available at
 -- <https://www.youtube.com/watch?v=Kmf3lnln1BI>
@@ -165,7 +182,6 @@ handleEvent s e =
               'b' -> mDo $ Just . textFieldCursorSelectStartOfLine
               -- use AutoComplete
               't' -> continue $ completeWord s
-
               _ -> continue s
             _ -> continue s
     _ -> continue s
@@ -269,6 +285,7 @@ drawGUI gui =
     createAutoCompleteWidget gui
   ]
 
+
 -- | Creates the widget for the autocomplete box 
 createAutoCompleteWidget :: GUI -> Widget n
 createAutoCompleteWidget gui = str $ "Autocomplete suggestion: " ++ (getSuggestedWord gui)
@@ -276,28 +293,42 @@ createAutoCompleteWidget gui = str $ "Autocomplete suggestion: " ++ (getSuggeste
 
 -- | returns a new GUI with the text edited based on autocomplete
 completeWord :: GUI -> GUI 
-completeWord s = let newText = getCompletedText s in
-  s {
-    cursor = makeTextFieldCursor newText,
-    previous = Just s
-  }
+completeWord s = case getCompletedTextCursor s of
+  Nothing -> s
+  Just c ->
+    s {
+      cursor = c,
+      previous = Just s
+      }
 
--- | Given a gui, gets the suggested word and appends it to text using autocomplete modoule
-getCompletedText :: GUI -> Text
-getCompletedText gui = let (rest, curr) = getCurrentWord gui in
-  let completedCurr = fromMaybe "" (bestSuggestion curr (dictionary gui)) in
-    T.pack $ (rest ++ " " ++ completedCurr)
+getCompletedTextCursor :: GUI -> Maybe TextFieldCursor
+getCompletedTextCursor gui = do
+  let curr = getCurrentWord gui
+  let sug = getSuggestedWord gui
+  cursor' <- removeN (length curr) (cursor gui)
+  cursor'' <- foldr textFieldCursorInsertChar (Just $ cursor') (reverse sug)
+  return $ textFieldCursorSelectEndWord cursor''
+
+
+-- | deletes n characters from the cursor
+removeN :: Int -> TextFieldCursor -> Maybe TextFieldCursor
+removeN 0 c = Just c
+removeN n c = do
+  c' <- (textFieldCursorRemove c)
+  c'' <- dullDelete c'
+  removeN (n-1) c''
 
 -- | Given a gui gets the suggested word
 getSuggestedWord :: GUI -> String 
-getSuggestedWord gui = let (rest, curr) = getCurrentWord gui in
+getSuggestedWord gui = let curr = getCurrentWord gui in
   fromMaybe "" (bestSuggestion curr (dictionary gui))
 
--- | returns a tuple (rest, currentWord)
-getCurrentWord :: GUI -> (String, String)
-getCurrentWord s = let text = rebuildTextFieldCursor (cursor s) in
+-- | returns a tuple (before, currentWord, after)
+getCurrentWord :: GUI -> String
+getCurrentWord s =
+  let text = rebuildTextFieldCursor (cursor s) in
   case words (T.unpack text) of
-    [] -> ("", "")
-    l -> let curr = last l in splitAt (length (T.unpack text) - length curr - 1) (T.unpack text)
+    [] -> ""
+    l -> last l
 -- ^^^ Right now this just works for the last word.... how do I get the current word based on cursor position?
--- TextFieldCursorSelectNextWord ?? 
+-- textFieldCursorSelection ?? 

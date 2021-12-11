@@ -1,1 +1,1 @@
-Test for the sugg estion it is slow but kinda works 
+testing the auto correct feature it is ok but could be other 
