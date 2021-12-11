@@ -67,7 +67,8 @@ app =
               (attrName "keyword", fg blue),
               (attrName "whitespace", fg black),
               (attrName "operator", fg red),
-              (attrName "string", fg green)
+              (attrName "string", fg green),
+              (attrName "border", fg white)
             ]
     }
 
@@ -92,11 +93,11 @@ terminalInit = do
 -- | saves file and formats it, if it is well-formed
 saveFile :: Text -> Path Abs File -> IO ()
 saveFile txt path = do
-  case parseFromText txt of
-    Left pe -> do
-      Prelude.putStr ("Error parsing file: " ++ pe)
-      Data.Text.IO.writeFile (Path.fromAbsFile path) txt
-    Right block -> Data.Text.IO.writeFile (Path.fromAbsFile path) (formatBlock block)
+  let trimmed = T.dropWhile (\x -> x == ' ' || x == '\n' || x == '\t') txt
+   in case parseFromText trimmed of
+        Left pe -> do
+          Data.Text.IO.writeFile (Path.fromAbsFile path) txt
+        Right block -> Data.Text.IO.writeFile (Path.fromAbsFile path) (formatBlock block)
 
 -- initial state, from opening a file to get text
 openFile :: Text -> IO GUI
@@ -168,85 +169,96 @@ createTfcWidget n (TextFieldCursor tfc) =
           Prelude.map coloredTxtWrap afters
         ]
 
--- private function from Brick, does safe text width
+-- Brick function that finds the width of a text
 safeTextWidth :: Text -> Int
 safeTextWidth = V.safeWcswidth . T.unpack
 
--- colored text wrapping widget function
-coloredTxtWrap :: Text -> Widget n
-coloredTxtWrap = txtWrapWith' defaultWrapSettings
+--  helper function for length of colored text
+colorLength :: [(Text, a)] -> Int
+colorLength = foldr (\(x, _) acc -> T.length x + acc) 0
 
--- modified text wrappers to also take in color
-txtWrapWith' :: WrapSettings -> T.Text -> Widget n
-txtWrapWith' settings s =
+-- reconstructs a colored line
+reconstruct :: [(Text, a)] -> Text
+reconstruct = foldr (\(x, _) acc -> x <> acc) T.empty
+
+-- wraps and colors text
+wrapAndColorText :: Text -> Int -> [[(Text, ColorMapper.Color)]]
+wrapAndColorText t width = let colored = colorMap t in createLines colored width
+
+-- create the lines from colored text
+createLines :: [(Text, ColorMapper.Color)] -> Int -> [[(Text, ColorMapper.Color)]]
+createLines [] _ = []
+createLines colored width =
+  let (x, y) = createLine colored width []
+   in x : createLines y width
+  where
+    createLine :: [(Text, ColorMapper.Color)] -> Int -> [(Text, ColorMapper.Color)] -> ([(Text, ColorMapper.Color)], [(Text, ColorMapper.Color)])
+    createLine [] _ curr = (curr, [])
+    createLine ((t, c) : ys) width curr =
+      if colorLength curr + T.length t < width
+        then createLine ys width (curr ++ [(t, c)])
+        else
+          let remainingLength = width - colorLength curr
+              (first, next) = T.splitAt remainingLength t
+           in (curr ++ [(first, c)], (next, c) : ys)
+
+-- image for an empty line
+emptyLine :: Attr -> Result n
+emptyLine attr = emptyResult & imageL .~ V.text' attr (T.pack " ")
+
+-- creates the images that will form the wrapped text lines
+createLineImages :: [[(Text, ColorMapper.Color)]] -> AttrMap -> Attr -> Int -> Result n
+createLineImages lines attrMap attr width = case lines of
+  [] -> emptyLine attr
+  multiple ->
+    let lineImgs = lineImg <$> multiple
+        createImage (text, attr) =
+          V.text'
+            (attrMapLookup (attrName (attribute attr)) attrMap)
+            (sanitiseText text)
+        lineImg lStr =
+          let vals = map createImage lStr
+              endspaces =
+                V.text'
+                  attr
+                  (T.replicate (width - safeTextWidth (reconstruct lStr)) (T.pack " "))
+           in foldr (V.<|>) endspaces vals
+     in emptyResult & imageL .~ V.horizCat [V.vertCat lineImgs]
+
+-- text wrap with color
+coloredTxtWrap :: T.Text -> Widget n
+coloredTxtWrap s =
   Widget Greedy Fixed $ do
     c <- getContext
-    let theLines = fixEmpty <$> wrapTextToLines settings (c ^. availWidthL) s
-        fixEmpty l
-          | T.null l = T.pack " "
-          | otherwise = l
-    case force theLines of
-      [] -> return $ emptyResult & imageL .~ V.text' (c ^. attrL) (T.pack " ")
-      multiple ->
-        let maxLength = maximum $ safeTextWidth <$> multiple
-            padding = V.charFill (c ^. attrL) ' ' (c ^. availWidthL - maxLength) (length lineImgs)
-            lineImgs = lineImg <$> multiple
-            createImage (text, attr) =
-              V.text'
-                (attrMapLookup (attrName (attribute attr)) (ctxAttrMap c))
-                (sanitiseText text)
-            lineImg lStr =
-              let vals = colorMap lStr
-                  vals' = map createImage vals
-                  endspaces =
-                    V.text'
-                      (c ^. attrL)
-                      (T.replicate (maxLength - safeTextWidth lStr) (T.pack " "))
-               in foldr (V.<|>) endspaces vals'
-         in return $ emptyResult & imageL .~ V.horizCat [V.vertCat lineImgs, padding]
+    let lines = wrapAndColorText s (c ^. availWidthL)
+     in return $ createLineImages lines (ctxAttrMap c) (c ^. attrL) (c ^. availWidthL)
 
+-- text wraps a textCursor with color and cursor location
 coloredTxtWrapCursor :: n -> TextCursor -> Widget n
-coloredTxtWrapCursor = txtWrapWithCursor defaultWrapSettings
-
-txtWrapWithCursor :: WrapSettings -> n -> TextCursor -> Widget n
-txtWrapWithCursor settings n tc =
+coloredTxtWrapCursor n tc =
   Widget Greedy Fixed $ do
     c <- getContext
     let s = rebuildTextCursor tc
-        theLines = fixEmpty <$> wrapTextToLines settings (c ^. availWidthL) s
-        fixEmpty l
-          | T.null l = T.pack " "
-          | otherwise = l
-    case force theLines of
-      [] ->
-        let cursorLoc = [CursorLocation (Brick.Location (0, 0)) (Just n)]
-         in return $ set cursorsL cursorLoc (emptyResult & imageL .~ V.text' (c ^. attrL) (T.pack " "))
-      multiple ->
-        let maxLength = maximum $ safeTextWidth <$> multiple
-            loc = findPhysicalLocation tc (safeTextWidth <$> multiple)
-            cursorLoc = [CursorLocation loc (Just n)]
-            padding = V.charFill (c ^. attrL) ' ' (c ^. availWidthL - maxLength) (length lineImgs)
-            lineImgs = lineImg <$> multiple
-            createImage (text, attr) =
-              V.text'
-                (attrMapLookup (attrName (attribute attr)) (ctxAttrMap c))
-                (sanitiseText text)
-            lineImg lStr =
-              let vals = colorMap lStr
-                  vals' = map createImage vals
-                  endspaces =
-                    V.text'
-                      (c ^. attrL)
-                      (T.replicate (maxLength - safeTextWidth lStr) (T.pack " "))
-               in foldr (V.<|>) endspaces vals'
-         in return $ set cursorsL cursorLoc (emptyResult & imageL .~ V.horizCat [V.vertCat lineImgs, padding])
+        lines = wrapAndColorText s (c ^. availWidthL)
+        cursorLoc = getCursorLoc tc lines n
+        lineWidget = createLineImages lines (ctxAttrMap c) (c ^. attrL) (c ^. availWidthL)
+     in return $ lineWidget & cursorsL .~ cursorLoc
 
+-- Given a cursor and a screen width, returns a Brick Location in order to place the cursor
 findPhysicalLocation :: TextCursor -> [Int] -> Brick.Location
 findPhysicalLocation tc y = go (textCursorIndex tc) y 0
   where
     go i [] h = Brick.Location (i, h)
     go i [x] h = Brick.Location (i, h)
-    go i (x : xs) h = if i > x then go (i - x - 1) xs (h + 1) else Brick.Location (i, h)
+    go i (x : xs) h = if i > x then go (i - x) xs (h + 1) else Brick.Location (i, h)
+
+-- gets the cursor location given a set of lines
+getCursorLoc :: TextCursor -> [[(Text, ColorMapper.Color)]] -> n -> [CursorLocation n]
+getCursorLoc tc lines n = case lines of
+  [] -> [CursorLocation (Brick.Location (0, 0)) (Just n)]
+  multiple ->
+    let loc = findPhysicalLocation tc (safeTextWidth <$> map reconstruct multiple)
+     in [CursorLocation loc (Just n)]
 
 -- draws a GUI
 drawGUI :: GUI -> [Widget Name]
