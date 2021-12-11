@@ -65,6 +65,7 @@ textFieldCursorSelectEndWord = textFieldCursorSelectedL %~ textCursorSelectEndWo
 
 textFieldCursorSelectBeginWord :: TextFieldCursor -> TextFieldCursor
 textFieldCursorSelectBeginWord = textFieldCursorSelectedL %~ textCursorSelectBeginWord
+
 {--
 -- This text editor is heavily inspired by Tom Sydney Kerckhove's tutorial, available at
 -- <https://www.youtube.com/watch?v=Kmf3lnln1BI>
@@ -236,7 +237,6 @@ createLines colored width =
   let (x, y) = createLine colored width []
    in x : createLines y width
   where
-    createLine :: [(Text, ColorMapper.Color)] -> Int -> [(Text, ColorMapper.Color)] -> ([(Text, ColorMapper.Color)], [(Text, ColorMapper.Color)])
     createLine [] _ curr = (curr, [])
     createLine ((t, c) : ys) width curr =
       if colorLength curr + T.length t < width
@@ -333,9 +333,10 @@ getCorrectedTextCursor :: GUI -> Maybe TextFieldCursor
 getCorrectedTextCursor gui = do
   let curr = getCurrentWord gui
   let sug = getSuggestedWord gui
-  cursor' <- removeN (length curr) (textFieldCursorSelectEndWord $ cursor gui) -- delete current word
-  cursor'' <- foldr textFieldCursorInsertChar (Just $ cursor') (reverse sug) -- insert corrected word
-  return $ textFieldCursorSelectEndWord cursor''
+  if sug == "" then return (cursor gui) else do
+    cursor' <- removeN (length curr) (textFieldCursorSelectEndWord $ cursor gui) -- delete current word
+    cursor'' <- foldr textFieldCursorInsertChar (Just $ cursor') (reverse sug) -- insert corrected word
+    return $ textFieldCursorSelectEndWord cursor''
 
 
 -- | deletes n characters from the cursor
@@ -349,7 +350,7 @@ removeN n c = do
 -- | Given a gui gets the suggested word
 getSuggestedWord :: GUI -> String 
 getSuggestedWord gui = let curr = getCurrentWord gui in
-  fromMaybe "" (bestSuggestion curr (dictionary gui))
+  if length curr < 10 then fromMaybe "" (bestSuggestion curr (dictionary gui)) else ""
 
 -- | returns the current word we are in
 getCurrentWord :: GUI -> String
