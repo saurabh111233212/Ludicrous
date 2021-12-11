@@ -343,8 +343,6 @@ getSuggestedWord gui = let curr = getCurrentWord gui in
 getCurrentWord :: GUI -> String
 getCurrentWord s =
   let text = rebuildTextFieldCursor (cursor s) in
-  let (startLine, startCol) = textFieldCursorSelection $ textFieldCursorSelectBeginWord (cursor s) in
-  let (endLine, endCol) = textFieldCursorSelection $ textFieldCursorSelectEndWord (cursor s) in
+  let (_, startCol) = textFieldCursorSelection $ textFieldCursorSelectBeginWord (cursor s) in
+  let (_, endCol) = textFieldCursorSelection $ textFieldCursorSelectEndWord (cursor s) in
   T.unpack $ T.take (endCol - startCol) (T.drop startCol text)
--- ^ how do I get the correct position when lines might be of many different length?
--- so far this works for a single line
