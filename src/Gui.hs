@@ -333,7 +333,7 @@ getCorrectedTextCursor :: GUI -> Maybe TextFieldCursor
 getCorrectedTextCursor gui = do
   let curr = getCurrentWord gui
   let sug = getSuggestedWord gui
-  if sug == "" then return (cursor gui) else do
+  if sug == "" then Nothing else do
     cursor' <- removeN (length curr) (textFieldCursorSelectEndWord $ cursor gui) -- delete current word
     cursor'' <- foldr textFieldCursorInsertChar (Just $ cursor') (reverse sug) -- insert corrected word
     return $ textFieldCursorSelectEndWord cursor''
@@ -349,8 +349,8 @@ removeN n c = do
 
 -- | Given a gui gets the suggested word
 getSuggestedWord :: GUI -> String 
-getSuggestedWord gui = let curr = getCurrentWord gui in
-  if length curr < 10 then fromMaybe "" (bestSuggestion curr (dictionary gui)) else ""
+getSuggestedWord gui = let curr = getCurrentWord gui in 
+  if length curr < 15 then fromMaybe "" (bestSuggestion curr (dictionary gui)) else ""
 
 -- | returns the current word we are in
 getCurrentWord :: GUI -> String
