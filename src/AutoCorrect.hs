@@ -24,8 +24,8 @@ isInDict :: String -> S.Set String -> Bool
 isInDict = S.member
 
 -- | checks if all words are in the dictionary
-allWordsInDict :: S.Set String -> [String] -> Bool
-allWordsInDict dict = L.foldr (\y acc -> y `isInDict` dict && acc) True
+allWordsInDict :: S.Set String -> S.Set String -> Bool
+allWordsInDict = flip S.isSubsetOf
 
 -- | adds a word to the dictionary
 addWord :: String -> S.Set String -> S.Set String
@@ -78,9 +78,9 @@ bestSuggestion word dict = if L.null dict then Nothing else
 
 
 -- | Finds the N closest suggestions to a word given a dictionary
-bestSuggestionN :: Int -> String -> S.Set String -> [String]
-bestSuggestionN 0 _ _ = []
+bestSuggestionN :: Int -> String -> S.Set String -> S.Set String
+bestSuggestionN 0 _ _ = S.empty
 bestSuggestionN n word dict = case (bestSuggestion word dict) of 
-  Nothing -> []
-  Just w -> w : bestSuggestionN (n - 1) word (deleteWord w dict)
+  Nothing -> S.empty
+  Just w -> S.insert w $ bestSuggestionN (n - 1) word (deleteWord w dict)
 

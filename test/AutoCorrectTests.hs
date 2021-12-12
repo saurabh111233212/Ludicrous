@@ -55,11 +55,11 @@ test_bestSuggestionN =
   "bestSuggestionN"
     ~: TestList
       [
-        bestSuggestionN 4 "a" empty ~?= [],
-        bestSuggestionN 23 "a" (S.fromList ["b"]) ~?= ["b"],
-        bestSuggestionN 1 "a" (S.fromList ["a"]) ~?= ["a"],
-        bestSuggestionN 2 "a" (S.fromList ["a", "ab"]) ~?= ["a", "ab"],
-        bestSuggestionN 3 "abd" (S.fromList ["a", "ab", "abd", "aaaaaa", "aaaa"])~?= ["abd", "ab", "a"]
+        bestSuggestionN 4 "a" empty ~?= empty,
+        bestSuggestionN 23 "a" (S.fromList ["b"]) ~?= (S.fromList ["b"]),
+        bestSuggestionN 1 "a" (S.fromList ["a"]) ~?= (S.fromList ["a"]),
+        bestSuggestionN 2 "a" (S.fromList ["a", "ab"]) ~?= (S.fromList ["a", "ab"]),
+        bestSuggestionN 3 "abd" (S.fromList ["a", "ab", "abd", "aaaaaa", "aaaa"])~?= (S.fromList ["abd", "ab", "a"])
       ]
 
 
