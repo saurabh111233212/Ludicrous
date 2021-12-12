@@ -19,7 +19,7 @@ runAutoCorrectTests =
   >> putStrLn "Valid Distance:"
   >> QC.quickCheck prop_validDistance
   >> putStrLn "All words in Dict:"
-  >> QC.quickCheck prop_allWordsInDict
+  >> QC.quickCheck (QC.withMaxSuccess 50 prop_allWordsInDict)
   >> putStrLn "AutoCorrect Tests Complete"
 
 
