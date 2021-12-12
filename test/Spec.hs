@@ -5,10 +5,9 @@ import AutoCorrectTests
 
 main :: IO ()
 main = do
-  runAutoCorrectTests
   runParserTests
   runColorMapperTests
-  return ()
+  runAutoCorrectTests
 
 
 

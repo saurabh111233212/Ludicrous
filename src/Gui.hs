@@ -17,6 +17,7 @@ import Cursor.Types
 import Data.Char
 import Data.List.Split (splitOn)
 import Data.Maybe
+import Data.Set as S hiding (foldr, map)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.IO hiding (getContents)
@@ -74,7 +75,7 @@ textFieldCursorSelectBeginWord = textFieldCursorSelectedL %~ textCursorSelectBeg
 -- | Data model for a text editor, including the string, and dictionary of current words
 data GUI = GUI
   { cursor :: TextFieldCursor,
-    dictionary :: [String],
+    dictionary :: S.Set String,
     previous :: Maybe GUI
   }
 

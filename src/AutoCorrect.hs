@@ -6,32 +6,33 @@ import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
 import Data.Text as T
 import qualified Data.Vector as V
 import Control.Monad.Memo
+import Data.Set as S
 
 
 
 -- | returns a dictionary with all the words in a given text
-initDict :: Text -> [String]
-initDict = L.words . unpack
+initDict :: Text -> S.Set String
+initDict = S.fromList . L.words . unpack
 
 
 -- | Dictionary containing initial used words (initially only )
-initialWords :: [String]
-initialWords = []
+initialWords :: S.Set String
+initialWords = S.empty
 
 -- | checks to see if a given word is in the diciontary
-isInDict :: String -> [String] -> Bool
-isInDict = L.elem 
+isInDict :: String -> S.Set String -> Bool
+isInDict = S.member
 
 -- | checks if all words are in the dictionary
-allWordsInDict :: [String] -> [String] -> Bool
+allWordsInDict :: S.Set String -> [String] -> Bool
 allWordsInDict dict = L.foldr (\y acc -> y `isInDict` dict && acc) True
 
 -- | adds a word to the dictionary
-addWord :: String -> [String] -> [String]
-addWord w dict = if w `L.elem` dict then dict else w : dict
+addWord :: String -> S.Set String -> S.Set String
+addWord w dict = if w `member` dict then dict else S.insert w  dict
 
-deleteWord :: String -> [String] -> [String]
-deleteWord w = aux w []
+deleteWord :: String -> S.Set String -> S.Set String
+deleteWord w dict = S.fromList (aux w [] (S.toList dict))
  where
   aux :: String -> [String] -> [String] -> [String]
   aux w rest (word : words) = if w == word then rest L.++ words else aux w (word : rest) words
@@ -70,14 +71,14 @@ findBest distances = let
 
 
 -- | Finds the closest suggestion to a word given a dictionary
-bestSuggestion :: String -> [String] -> Maybe String
+bestSuggestion :: String -> S.Set String -> Maybe String
 bestSuggestion word dict = if L.null dict then Nothing else
-  let allDistances = distances word dict in
+  let allDistances = distances word (S.toList dict) in
     findBest allDistances
 
 
 -- | Finds the N closest suggestions to a word given a dictionary
-bestSuggestionN :: Int -> String -> [String] -> [String]
+bestSuggestionN :: Int -> String -> S.Set String -> [String]
 bestSuggestionN 0 _ _ = []
 bestSuggestionN n word dict = case (bestSuggestion word dict) of 
   Nothing -> []

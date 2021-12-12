@@ -3,6 +3,7 @@ module AutoCorrectTests where
 import AutoCorrect
 import Test.HUnit
 import qualified Test.QuickCheck as QC
+import Data.Set as S
 
 
 runAutoCorrectTests :: IO ()
@@ -13,12 +14,13 @@ runAutoCorrectTests =
   >> runTestTT test_bestSuggestion
   >> putStrLn "Best Suggestion N"
   >> runTestTT test_bestSuggestionN
-  -- >> putStrLn "All words in Dict:"
-  -- >> QC.quickCheck prop_allWordsInDict
   >> putStrLn "Non negative distance:"
   >> QC.quickCheck prop_nonNegDsitance
   >> putStrLn "Valid Distance:"
   >> QC.quickCheck prop_validDistance
+  >> putStrLn "All words in Dict:"
+  >> QC.quickCheck prop_allWordsInDict
+  >> putStrLn "AutoCorrect Tests Complete"
 
 
 
@@ -41,10 +43,10 @@ test_bestSuggestion :: Test
 test_bestSuggestion =
     "best suggestion"
         ~: TestList
-            [ bestSuggestion "a" [] ~?= Nothing,
-              bestSuggestion "a" ["b"] ~?= Just "b",
-              bestSuggestion "a" ["a"] ~?= Just "a",
-              bestSuggestion "a" ["a", "ab"] ~?= Just "a"
+            [ bestSuggestion "a" empty ~?= Nothing,
+              bestSuggestion "a" (S.fromList ["b"]) ~?= Just "b",
+              bestSuggestion "a" (S.fromList ["a"]) ~?= Just "a",
+              bestSuggestion "a" (S.fromList ["a", "ab"]) ~?= Just "a"
             ]
 
 -- | Tests the multiple suggestions function
@@ -53,20 +55,17 @@ test_bestSuggestionN =
   "bestSuggestionN"
     ~: TestList
       [
-        bestSuggestionN 4 "a" [] ~?= [],
-        bestSuggestionN 23 "a" ["b"] ~?= ["b"],
-        bestSuggestionN 1 "a" ["a"] ~?= ["a"],
-        bestSuggestionN 2 "a" ["a", "ab"] ~?= ["a", "ab"],
-        bestSuggestionN 3 "abd" ["a", "ab", "abd", "aaaaaa", "aaaa"] ~?= ["abd", "ab", "a"]
+        bestSuggestionN 4 "a" empty ~?= [],
+        bestSuggestionN 23 "a" (S.fromList ["b"]) ~?= ["b"],
+        bestSuggestionN 1 "a" (S.fromList ["a"]) ~?= ["a"],
+        bestSuggestionN 2 "a" (S.fromList ["a", "ab"]) ~?= ["a", "ab"],
+        bestSuggestionN 3 "abd" (S.fromList ["a", "ab", "abd", "aaaaaa", "aaaa"])~?= ["abd", "ab", "a"]
       ]
 
 
-
--- this is hanging
 -- test that all suggested words are in the dictionary
-prop_allWordsInDict :: Int -> String -> [String] -> Bool
+prop_allWordsInDict :: Int -> String -> S.Set String-> Bool
 prop_allWordsInDict n s xs = allWordsInDict xs (bestSuggestionN n s xs) 
-
 
 -- | the distnace should never be negative
 prop_nonNegDsitance :: String -> String -> Bool
