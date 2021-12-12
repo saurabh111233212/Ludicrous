@@ -1,6 +1,6 @@
 module ColorMapperTests where
 
-import ColorMapper
+import ColorMapper 
 import qualified Data.Functor.Identity
 import Data.Text (pack)
 import Test.HUnit

@@ -1,4 +1,8 @@
-module AutoCorrect where
+{-
+Module containing autocrrect functions
+-}
+
+module AutoCorrect(initDict, isInDict, allWordsInDict, distance, bestSuggestion, bestSuggestionN) where
 
 import Data.List as L
 import LuParser (reserved)
@@ -14,7 +18,6 @@ import Data.Set as S
 initDict :: Text -> S.Set String
 initDict = S.fromList . L.words . unpack
 
-
 -- | Dictionary containing initial used words (initially only )
 initialWords :: S.Set String
 initialWords = S.empty
@@ -29,20 +32,16 @@ allWordsInDict = flip S.isSubsetOf
 
 -- | adds a word to the dictionary
 addWord :: String -> S.Set String -> S.Set String
-addWord w dict = if w `member` dict then dict else S.insert w  dict
+addWord = S.insert
 
 deleteWord :: String -> S.Set String -> S.Set String
-deleteWord w dict = S.fromList (aux w [] (S.toList dict))
- where
-  aux :: String -> [String] -> [String] -> [String]
-  aux w rest (word : words) = if w == word then rest L.++ words else aux w (word : rest) words
-  aux w rest [] = rest
+deleteWord = S.delete
 
 -- | Finds the distance (Levenshtein) between two strings
 distance :: String -> String -> Int
 distance s t = startEvalMemo $ distance' ((V.fromList s), (V.fromList t))
 
--- uses vectors for better runtime 
+-- | Uses vectors and memo for better runtime 
 distance' :: (MonadMemo (V.Vector Char, V.Vector Char) Int m) => (V.Vector Char, V.Vector Char) -> m Int
 distance' (s, t) = if V.null s then return $ V.length t else if V.null t then return $ V.length s else
   if V.last s == V.last t then memo distance' ((V.init s), (V.init t)) else do
@@ -72,7 +71,7 @@ findBest distances = let
 
 -- | Finds the closest suggestion to a word given a dictionary
 bestSuggestion :: String -> S.Set String -> Maybe String
-bestSuggestion word dict = if L.null dict then Nothing else
+bestSuggestion word dict = if S.null dict then Nothing else
   let allDistances = distances word (S.toList dict) in
     findBest allDistances
 

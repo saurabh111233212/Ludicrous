@@ -1,7 +1,7 @@
 {--
 Formatter to change text into formatted lu code.
 --}
-module Formatter where
+module Formatter (parseFromText, formatBlock) where
 
 
 import qualified Parser as P

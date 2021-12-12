@@ -1,4 +1,9 @@
-module Gui where
+{--
+ Functional representation of a terminal gui for the ludicrous
+ text parser, to be accessed by running terminalInit in the IO monad.
+--}
+
+module Gui (terminalInit) where
 
 import AutoCorrect
 import Brick
@@ -35,6 +40,11 @@ import System.Environment
 import System.Exit
 import Text.Wrap
 
+
+-- | moves a cursor to select the end of the current word
+textFieldCursorSelectEndWord :: TextFieldCursor -> TextFieldCursor
+textFieldCursorSelectEndWord = textFieldCursorSelectedL %~ textCursorSelectEndWord
+
 textCursorSelectEndWord :: TextCursor -> TextCursor
 textCursorSelectEndWord tc =
   let goRight = maybe tc textCursorSelectEndWord (textCursorSelectNext tc)
@@ -48,6 +58,10 @@ textCursorSelectEndWord tc =
               | otherwise -> tc
           | otherwise -> goRight
 
+-- | moves a cursor to select the beginning of the current word
+textFieldCursorSelectBeginWord :: TextFieldCursor -> TextFieldCursor
+textFieldCursorSelectBeginWord = textFieldCursorSelectedL %~ textCursorSelectBeginWord
+
 textCursorSelectBeginWord :: TextCursor -> TextCursor
 textCursorSelectBeginWord tc =
   let goLeft = maybe tc textCursorSelectBeginWord (textCursorSelectPrev tc)
@@ -60,12 +74,6 @@ textCursorSelectBeginWord tc =
               | isSpace n -> goLeft
               | otherwise -> tc
           | otherwise -> goLeft
-
-textFieldCursorSelectEndWord :: TextFieldCursor -> TextFieldCursor
-textFieldCursorSelectEndWord = textFieldCursorSelectedL %~ textCursorSelectEndWord
-
-textFieldCursorSelectBeginWord :: TextFieldCursor -> TextFieldCursor
-textFieldCursorSelectBeginWord = textFieldCursorSelectedL %~ textCursorSelectBeginWord
 
 {--
 -- This text editor is heavily inspired by Tom Sydney Kerckhove's tutorial, available at
@@ -143,7 +151,7 @@ saveFile txt path = do
           Data.Text.IO.writeFile (Path.fromAbsFile path) txt
         Right block -> Data.Text.IO.writeFile (Path.fromAbsFile path) (formatBlock block)
 
--- initial state, from opening a file to get text
+-- | initial state, from opening a file to get text
 openFile :: Text -> Text -> IO GUI
 openFile text dictText = do
   return
@@ -153,7 +161,7 @@ openFile text dictText = do
         previous = Nothing
       }
 
--- formats text contained within a GUI, returns a new, formatted GUI
+-- | formats text contained within a GUI, returns a new, formatted GUI
 format :: GUI -> GUI
 format s =
   let text = rebuildTextFieldCursor (cursor s)
@@ -166,7 +174,7 @@ format s =
                   previous = Just s
                 }
 
--- handles a Brick Event
+-- | handles a Brick Event
 handleEvent :: GUI -> BrickEvent Name e -> EventM Name (Next GUI)
 handleEvent s e =
   case e of
@@ -204,7 +212,7 @@ handleEvent s e =
             _ -> continue s
     _ -> continue s
 
--- modified widget creator to wrap lines
+-- | modified widget creator to wrap lines
 createTfcWidget :: n -> TextFieldCursor -> Widget n
 createTfcWidget n (TextFieldCursor tfc) =
   flip foldNonEmptyCursor tfc $ \befores current afters ->
@@ -215,23 +223,23 @@ createTfcWidget n (TextFieldCursor tfc) =
           Prelude.map coloredTxtWrap afters
         ]
 
--- Brick function that finds the width of a text
+-- | Brick function that finds the width of a text
 safeTextWidth :: Text -> Int
 safeTextWidth = V.safeWcswidth . T.unpack
 
---  helper function for length of colored text
+-- | helper function for length of colored text
 colorLength :: [(Text, a)] -> Int
 colorLength = foldr (\(x, _) acc -> T.length x + acc) 0
 
--- reconstructs a colored line
+-- | reconstructs a colored line
 reconstruct :: [(Text, a)] -> Text
 reconstruct = foldr (\(x, _) acc -> x <> acc) T.empty
 
--- wraps and colors text
+-- | wraps and colors text
 wrapAndColorText :: Text -> Int -> [[(Text, ColorMapper.Color)]]
 wrapAndColorText t width = let colored = colorMap t in createLines colored width
 
--- create the lines from colored text
+-- | create the lines from colored text
 createLines :: [(Text, ColorMapper.Color)] -> Int -> [[(Text, ColorMapper.Color)]]
 createLines [] _ = []
 createLines colored width =
@@ -247,11 +255,11 @@ createLines colored width =
               (first, next) = T.splitAt remainingLength t
            in (curr ++ [(first, c)], (next, c) : ys)
 
--- image for an empty line
+-- | image for an empty line
 emptyLine :: Attr -> Result n
 emptyLine attr = emptyResult & imageL .~ V.text' attr (T.pack " ")
 
--- creates the images that will form the wrapped text lines
+-- | creates the images that will form the wrapped text lines
 createLineImages :: [[(Text, ColorMapper.Color)]] -> AttrMap -> Attr -> Int -> Result n
 createLineImages lines attrMap attr width = case lines of
   [] -> emptyLine attr
@@ -270,7 +278,7 @@ createLineImages lines attrMap attr width = case lines of
            in foldr (V.<|>) endspaces vals
      in emptyResult & imageL .~ V.horizCat [V.vertCat lineImgs]
 
--- text wrap with color
+-- | text wrap with color
 coloredTxtWrap :: T.Text -> Widget n
 coloredTxtWrap s =
   Widget Greedy Fixed $ do
@@ -278,7 +286,7 @@ coloredTxtWrap s =
     let lines = wrapAndColorText s (c ^. availWidthL)
      in return $ createLineImages lines (ctxAttrMap c) (c ^. attrL) (c ^. availWidthL)
 
--- text wraps a textCursor with color and cursor location
+-- | text wraps a textCursor with color and cursor location
 coloredTxtWrapCursor :: n -> TextCursor -> Widget n
 coloredTxtWrapCursor n tc =
   Widget Greedy Fixed $ do
@@ -289,7 +297,7 @@ coloredTxtWrapCursor n tc =
         lineWidget = createLineImages lines (ctxAttrMap c) (c ^. attrL) (c ^. availWidthL)
      in return $ lineWidget & cursorsL .~ cursorLoc
 
--- Given a cursor and a screen width, returns a Brick Location in order to place the cursor
+-- | Given a cursor and a screen width, returns a Brick Location in order to place the cursor
 findPhysicalLocation :: TextCursor -> [Int] -> Brick.Location
 findPhysicalLocation tc y = go (textCursorIndex tc) y 0
   where
@@ -297,7 +305,7 @@ findPhysicalLocation tc y = go (textCursorIndex tc) y 0
     go i [x] h = Brick.Location (i, h)
     go i (x : xs) h = if i > x then go (i - x) xs (h + 1) else Brick.Location (i, h)
 
--- gets the cursor location given a set of lines
+-- | gets the cursor location given a set of lines
 getCursorLoc :: TextCursor -> [[(Text, ColorMapper.Color)]] -> n -> [CursorLocation n]
 getCursorLoc tc lines n = case lines of
   [] -> [CursorLocation (Brick.Location (0, 0)) (Just n)]
@@ -305,7 +313,7 @@ getCursorLoc tc lines n = case lines of
     let loc = findPhysicalLocation tc (safeTextWidth <$> map reconstruct multiple)
      in [CursorLocation loc (Just n)]
 
--- draws a GUI
+-- |  draws a GUI
 drawGUI :: GUI -> [Widget Name]
 drawGUI gui =
   [ (border $ padLeftRight 1 $ viewport Viewport Vertical $ createTfcWidget Text (cursor gui))

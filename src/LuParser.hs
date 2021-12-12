@@ -14,6 +14,7 @@ import qualified Parser as P
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
 import qualified Test.QuickCheck as QC
 
+
 {-
 Testing your Parser
 ------------------
