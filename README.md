@@ -1,9 +1,11 @@
 # Ludicrous
+David (`xudavid`) and Saurabh (`surb`)
 
 ## Overview
 A purely functional, terminal based text editor written in Haskell for the language Lu, a reduced form of the scripting language Lua. We have supported basic text editing functions such as autocorrect, syntax highlighting, and autoformatting.
 
 ## Module organization
+Below are the major components. We suggest you read the modules in the following order. The first three are "libraries" that we created to aid in our creating a functional text editor, and the fourth module `GUI` contains all of the code that defines the user-facing terminal interface.
 
 1. `AutoCorrect`: A memoized implementation of an autocorrect feature based off of the Levenshtein distance.
 
@@ -18,11 +20,17 @@ A purely functional, terminal based text editor written in Haskell for the langu
 6. `LuSyntax.hs` Defines a pure representation of the syntax for the Lu language.
 
 7. `Parser.hs` A general parsing library. 
+
+## Dependencies
+We have additional library dependencies. Most notably, other than standard libraries, we have included libraries such as `Brick`, a declarative terminal UI library, `Parsec`, a parsing library, and `Monad-memo`, a memoization monad written in Haskell.
+
+Additionally, we used other libraries such as `vty` for graphics, `microlens` for Lens operations, as well as `pretty` for pretty printing, `text` for the `Text` datastructure, and `vector` for vector operations.
+
 ## Building and testing
 
 This project compiles with `stack build`. 
 
-We can test with `stack test`.
+We can test with `stack test`. This will run our suite of HUnit and QuickCheck tests.
 
 ## User Interface
 

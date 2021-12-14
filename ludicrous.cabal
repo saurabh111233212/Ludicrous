@@ -73,7 +73,6 @@ library
     , text
     , vector
     , vty
-    , word-wrap
   default-language: Haskell2010
 
 executable ludicrous
@@ -121,7 +120,6 @@ executable ludicrous
     , text
     , vector
     , vty
-    , word-wrap
   default-language: Haskell2010
 
 test-suite ludicrous-test
@@ -173,5 +171,4 @@ test-suite ludicrous-test
     , text
     , vector
     , vty
-    , word-wrap
   default-language: Haskell2010

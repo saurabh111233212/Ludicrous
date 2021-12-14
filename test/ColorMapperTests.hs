@@ -1,6 +1,6 @@
 module ColorMapperTests where
 
-import ColorMapper 
+import ColorMapper
 import qualified Data.Functor.Identity
 import Data.Text (pack)
 import Test.HUnit
@@ -24,9 +24,11 @@ testWhiteSpaceParser =
     ~: TestList
       [ run wsParser " " ~?= Right (pack " ", C {attribute = "whitespace"}),
         run wsParser "\t" ~?= Right (pack "\t", C {attribute = "whitespace"}),
-        run wsParser " some other stuff" ~?= Right (pack " ", C {attribute = "whitespace"}),
+        run wsParser " some other stuff"
+          ~?= Right (pack " ", C {attribute = "whitespace"}),
         run wsParser "some other stuff " ~?= Left "error",
-        run wsParser "    \t    " ~?= Right (pack "    \t    ", C {attribute = "whitespace"}),
+        run wsParser "    \t    "
+          ~?= Right (pack "    \t    ", C {attribute = "whitespace"}),
         run wsParser "" ~?= Left "error"
       ]
 
@@ -35,10 +37,13 @@ testStringParser :: Test
 testStringParser =
   "String Parsing Test"
     ~: TestList
-      [ run stringParser "\"\"" ~?= Right (pack "\"\"", C {attribute = "string"}),
-        run stringParser "\" something \"" ~?= Right (pack "\" something \"", C {attribute = "string"}),
+      [ run stringParser "\"\""
+          ~?= Right (pack "\"\"", C {attribute = "string"}),
+        run stringParser "\" something \""
+          ~?= Right (pack "\" something \"", C {attribute = "string"}),
         run stringParser "some other stuff" ~?= Left "error",
-        run stringParser "\"if else then +\"" ~?= Right (pack "\"if else then +\"", C {attribute = "string"}),
+        run stringParser "\"if else then +\""
+          ~?= Right (pack "\"if else then +\"", C {attribute = "string"}),
         run stringParser "" ~?= Left "error",
         run stringParser "\" incomplete string" ~?= Left "error"
       ]
@@ -48,7 +53,8 @@ testCharParser :: Test
 testCharParser =
   "Character Parsing Test"
     ~: TestList
-      [ run charParser "\'x\'" ~?= Right (pack "\'x\'", C {attribute = "string"}),
+      [ run charParser "\'x\'"
+          ~?= Right (pack "\'x\'", C {attribute = "string"}),
         run charParser "\' something \'" ~?= Left "error",
         run charParser "some other stuff" ~?= Left "error",
         run charParser "\'\'" ~?= Left "error",
@@ -66,7 +72,8 @@ testKeywordParser =
         run keyParser "" ~?= Left "error",
         run keyParser "if" ~?= Right (pack "if", C {attribute = "keyword"}),
         run keyParser "ifword" ~?= Left "error",
-        run keyParser "if other" ~?= Right (pack "if", C {attribute = "keyword"})
+        run keyParser "if other"
+          ~?= Right (pack "if", C {attribute = "keyword"})
       ]
 
 -- test string parser
@@ -89,8 +96,10 @@ testMiscParser =
     ~: TestList
       [ run miscParser "+" ~?= Left "error",
         run miscParser "" ~?= Left "error",
-        run miscParser "ifsomething" ~?= Right (pack "ifsomething", C {attribute = "text"}),
-        run miscParser "ifsome\nthing" ~?= Right (pack "ifsome", C {attribute = "text"})
+        run miscParser "ifsomething"
+          ~?= Right (pack "ifsomething", C {attribute = "text"}),
+        run miscParser "ifsome\nthing"
+          ~?= Right (pack "ifsome", C {attribute = "text"})
       ]
 
 -- tests if correctly parses some lines
@@ -99,7 +108,8 @@ testColorMapper =
   "Color Mapper Test"
     ~: TestList
       [ colorMap (pack "") ~?= [(pack " ", C {attribute = "text"})],
-        colorMap (pack "if x == 2 then y else z repeat while end \"test string\" too")
+        colorMap
+          (pack "if x == 2 then y else z repeat while end \"test string\" too")
           ~?= [ (pack "if", C {attribute = "keyword"}),
                 (pack " ", C {attribute = "whitespace"}),
                 (pack "x", C {attribute = "text"}),

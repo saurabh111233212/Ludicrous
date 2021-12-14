@@ -7,12 +7,8 @@ module Gui (terminalInit) where
 
 import AutoCorrect
 import Brick
-import Brick.AttrMap
 import Brick.Widgets.Border
-import Brick.Widgets.Center
-import Brick.Widgets.Core
 import ColorMapper
-import Control.DeepSeq
 import Cursor.Brick.Text
 import Cursor.Brick.TextField
 import Cursor.List.NonEmpty
@@ -31,19 +27,16 @@ import qualified Graphics.Vty as V
 import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
 import Lens.Micro (set, (%~), (&), (.~), (^.))
-import LuParser
-import LuSyntax hiding (Name)
 import Path
 import Path.IO
-import Prelude hiding (getContents)
 import System.Environment
 import System.Exit
-import Text.Wrap
-
+import Prelude hiding (getContents)
 
 -- | moves a cursor to select the end of the current word
 textFieldCursorSelectEndWord :: TextFieldCursor -> TextFieldCursor
-textFieldCursorSelectEndWord = textFieldCursorSelectedL %~ textCursorSelectEndWord
+textFieldCursorSelectEndWord =
+  textFieldCursorSelectedL %~ textCursorSelectEndWord
 
 textCursorSelectEndWord :: TextCursor -> TextCursor
 textCursorSelectEndWord tc =
@@ -60,7 +53,8 @@ textCursorSelectEndWord tc =
 
 -- | moves a cursor to select the beginning of the current word
 textFieldCursorSelectBeginWord :: TextFieldCursor -> TextFieldCursor
-textFieldCursorSelectBeginWord = textFieldCursorSelectedL %~ textCursorSelectBeginWord
+textFieldCursorSelectBeginWord =
+  textFieldCursorSelectedL %~ textCursorSelectBeginWord
 
 textCursorSelectBeginWord :: TextCursor -> TextCursor
 textCursorSelectBeginWord tc =
@@ -76,7 +70,7 @@ textCursorSelectBeginWord tc =
           | otherwise -> goLeft
 
 {--
--- This text editor is heavily inspired by Tom Sydney Kerckhove's tutorial, available at
+-- This text editor is inspired Tom Sydney Kerckhove's tutorial, available at
 -- <https://www.youtube.com/watch?v=Kmf3lnln1BI>
 --}
 
@@ -119,10 +113,11 @@ app =
 -- and open that as a file
 getContents :: Path Abs File -> IO Text
 getContents fpath = do
-  maybeContents <- forgivingAbsence $ Data.Text.IO.readFile (Path.fromAbsFile fpath)
+  maybeContents <-
+    forgivingAbsence $
+      Data.Text.IO.readFile
+        (Path.fromAbsFile fpath)
   return $ fromMaybe T.empty maybeContents
-
-
 
 terminalInit :: IO ()
 terminalInit = do
@@ -149,7 +144,10 @@ saveFile txt path = do
    in case parseFromText trimmed of
         Left pe -> do
           Data.Text.IO.writeFile (Path.fromAbsFile path) txt
-        Right block -> Data.Text.IO.writeFile (Path.fromAbsFile path) (formatBlock block)
+        Right block ->
+          Data.Text.IO.writeFile
+            (Path.fromAbsFile path)
+            (formatBlock block)
 
 -- | initial state, from opening a file to get text
 openFile :: Text -> Text -> IO GUI
@@ -240,7 +238,10 @@ wrapAndColorText :: Text -> Int -> [[(Text, ColorMapper.Color)]]
 wrapAndColorText t width = let colored = colorMap t in createLines colored width
 
 -- | create the lines from colored text
-createLines :: [(Text, ColorMapper.Color)] -> Int -> [[(Text, ColorMapper.Color)]]
+createLines ::
+  [(Text, ColorMapper.Color)] ->
+  Int ->
+  [[(Text, ColorMapper.Color)]]
 createLines [] _ = []
 createLines colored width =
   let (x, y) = createLine colored width []
@@ -260,7 +261,12 @@ emptyLine :: Attr -> Result n
 emptyLine attr = emptyResult & imageL .~ V.text' attr (T.pack " ")
 
 -- | creates the images that will form the wrapped text lines
-createLineImages :: [[(Text, ColorMapper.Color)]] -> AttrMap -> Attr -> Int -> Result n
+createLineImages ::
+  [[(Text, ColorMapper.Color)]] ->
+  AttrMap ->
+  Attr ->
+  Int ->
+  Result n
 createLineImages lines attrMap attr width = case lines of
   [] -> emptyLine attr
   multiple ->
@@ -274,7 +280,10 @@ createLineImages lines attrMap attr width = case lines of
               endspaces =
                 V.text'
                   attr
-                  (T.replicate (width - safeTextWidth (reconstruct lStr)) (T.pack " "))
+                  ( T.replicate
+                      (width - safeTextWidth (reconstruct lStr))
+                      (T.pack " ")
+                  )
            in foldr (V.<|>) endspaces vals
      in emptyResult & imageL .~ V.horizCat [V.vertCat lineImgs]
 
@@ -284,7 +293,12 @@ coloredTxtWrap s =
   Widget Greedy Fixed $ do
     c <- getContext
     let lines = wrapAndColorText s (c ^. availWidthL)
-     in return $ createLineImages lines (ctxAttrMap c) (c ^. attrL) (c ^. availWidthL)
+     in return $
+          createLineImages
+            lines
+            (ctxAttrMap c)
+            (c ^. attrL)
+            (c ^. availWidthL)
 
 -- | text wraps a textCursor with color and cursor location
 coloredTxtWrapCursor :: n -> TextCursor -> Widget n
@@ -294,7 +308,12 @@ coloredTxtWrapCursor n tc =
     let s = rebuildTextCursor tc
         lines = wrapAndColorText s (c ^. availWidthL)
         cursorLoc = getCursorLoc tc lines n
-        lineWidget = createLineImages lines (ctxAttrMap c) (c ^. attrL) (c ^. availWidthL)
+        lineWidget =
+          createLineImages
+            lines
+            (ctxAttrMap c)
+            (c ^. attrL)
+            (c ^. availWidthL)
      in return $ lineWidget & cursorsL .~ cursorLoc
 
 -- | Given a cursor and a screen width, returns a Brick Location in order to place the cursor
@@ -303,10 +322,17 @@ findPhysicalLocation tc y = go (textCursorIndex tc) y 0
   where
     go i [] h = Brick.Location (i, h)
     go i [x] h = Brick.Location (i, h)
-    go i (x : xs) h = if i > x then go (i - x) xs (h + 1) else Brick.Location (i, h)
+    go i (x : xs) h =
+      if i > x
+        then go (i - x) xs (h + 1)
+        else Brick.Location (i, h)
 
 -- | gets the cursor location given a set of lines
-getCursorLoc :: TextCursor -> [[(Text, ColorMapper.Color)]] -> n -> [CursorLocation n]
+getCursorLoc ::
+  TextCursor ->
+  [[(Text, ColorMapper.Color)]] ->
+  n ->
+  [CursorLocation n]
 getCursorLoc tc lines n = case lines of
   [] -> [CursorLocation (Brick.Location (0, 0)) (Just n)]
   multiple ->
@@ -316,25 +342,29 @@ getCursorLoc tc lines n = case lines of
 -- |  draws a GUI
 drawGUI :: GUI -> [Widget Name]
 drawGUI gui =
-  [ (border $ padLeftRight 1 $ viewport Viewport Vertical $ createTfcWidget Text (cursor gui))
-    <=>
-    createAutoCompleteWidget gui
+  [ border
+      ( padLeftRight 1 $
+          viewport Viewport Vertical $
+            createTfcWidget Text (cursor gui)
+      )
+      <=> createAutoCompleteWidget gui
   ]
 
-
--- | Creates the widget for the autocomplete box 
+-- | Creates the widget for the autocomplete box
 createAutoCompleteWidget :: GUI -> Widget n
-createAutoCompleteWidget gui = str $ "Autocomplete suggestion: " ++ (getSuggestedWord gui)
+createAutoCompleteWidget gui =
+  str $
+    "Autocomplete suggestion: "
+      ++ getSuggestedWord gui
 
-
--- | returns a new GUI with the text edited based on autocorrect, if successful 
-correctWord :: GUI -> GUI 
+-- | returns a new GUI with the text edited based on autocorrect, if successful
+correctWord :: GUI -> GUI
 correctWord s = case getCorrectedTextCursor s of
   Nothing -> s
   Just c ->
-    s {
-      cursor = c,
-      previous = Just s
+    s
+      { cursor = c,
+        previous = Just s
       }
 
 -- | Given a gui, attempts to return a textFieldCursor with the current word corrected
@@ -342,29 +372,47 @@ getCorrectedTextCursor :: GUI -> Maybe TextFieldCursor
 getCorrectedTextCursor gui = do
   let curr = getCurrentWord gui
   let sug = getSuggestedWord gui
-  if sug == "" then Nothing else do
-    cursor' <- removeN (length curr) (textFieldCursorSelectEndWord $ cursor gui) -- delete current word
-    cursor'' <- foldr textFieldCursorInsertChar (Just $ cursor') (reverse sug) -- insert corrected word
-    return $ textFieldCursorSelectEndWord cursor''
-
+  if sug == ""
+    then Nothing
+    else do
+      cursor' <-
+        removeN
+          (length curr)
+          (textFieldCursorSelectEndWord $ cursor gui) -- delete current word
+      cursor'' <-
+        foldr
+          textFieldCursorInsertChar
+          (Just $ cursor')
+          (reverse sug) -- insert corrected word
+      return $ textFieldCursorSelectEndWord cursor''
 
 -- | deletes n characters from the cursor
 removeN :: Int -> TextFieldCursor -> Maybe TextFieldCursor
 removeN 0 c = Just c
 removeN n c = do
-  c' <- (textFieldCursorRemove c)
+  c' <- textFieldCursorRemove c
   c'' <- dullDelete c'
-  removeN (n-1) c''
+  removeN (n -1) c''
 
 -- | Given a gui gets the suggested word
-getSuggestedWord :: GUI -> String 
-getSuggestedWord gui = let curr = getCurrentWord gui in 
-  if length curr < 15 then fromMaybe "" (bestSuggestion curr (dictionary gui)) else ""
+getSuggestedWord :: GUI -> String
+getSuggestedWord gui =
+  let curr = getCurrentWord gui
+   in if length curr < 10
+        then
+          fromMaybe
+            ""
+            (bestSuggestion curr (dictionary gui))
+        else ""
 
 -- | returns the current word we are in
 getCurrentWord :: GUI -> String
 getCurrentWord s =
-  let text = rebuildTextFieldCursor (cursor s) in
-  let (_, startCol) = textFieldCursorSelection $ textFieldCursorSelectBeginWord (cursor s) in
-  let (_, endCol) = textFieldCursorSelection $ textFieldCursorSelectEndWord (cursor s) in
-  T.unpack $ T.take (endCol - startCol) (T.drop startCol text)
+  let text = rebuildTextFieldCursor (cursor s)
+   in let (_, startCol) =
+            textFieldCursorSelection $
+              textFieldCursorSelectBeginWord (cursor s)
+          (_, endCol) =
+            textFieldCursorSelection $
+              textFieldCursorSelectEndWord (cursor s)
+       in T.unpack $ T.take (endCol - startCol) (T.drop startCol text)

@@ -1,4 +1,15 @@
-module ColorMapper (Color (C), colorMap, attribute, wsParser, stringParser, charParser, keyParser, opParser, miscParser) where
+module ColorMapper
+  ( Color (C),
+    colorMap,
+    attribute,
+    wsParser,
+    stringParser,
+    charParser,
+    keyParser,
+    opParser,
+    miscParser,
+  )
+where
 
 import Data.Functor
 import Data.Text (Text, pack)
@@ -9,7 +20,7 @@ import Text.Parsec.Error
 import Text.Parsec.Prim
 import Text.Parsec.Text
 
-data Color = C {attribute :: String} deriving (Eq, Show)
+newtype Color = C {attribute :: String} deriving (Eq, Show)
 
 -- | List of reserved key words
 keyWords :: [String]
@@ -55,13 +66,44 @@ charParser = do
 -- | parses keywords
 keyParser :: Stream s m Char => ParsecT s u m (Text, Color)
 keyParser = do
-  x <- choice (map (try . string) ["if", "then", "else", "repeat", "until", "while", "do", "end"]) <* lookAhead (choice [wsParser, (T.empty, C "") Data.Functor.<$ eof])
+  x <-
+    choice
+      ( map
+          (try . string)
+          ["if", "then", "else", "repeat", "until", "while", "do", "end"]
+      )
+      <* lookAhead (choice [wsParser, (T.empty, C "") Data.Functor.<$ eof])
   return (pack x, C "keyword")
 
 -- | parses operators
 opParser :: Stream s m Char => ParsecT s u m (Text, Color)
 opParser = do
-  x <- choice $ map (try . string) ["+", "-", "*", "//", "/", "%", "==", ">=", "<=", "=", "<", ">", "..", ".", "not", "{", "}", "[", "]", "#", ";"]
+  x <-
+    choice $
+      map
+        (try . string)
+        [ "+",
+          "-",
+          "*",
+          "//",
+          "/",
+          "%",
+          "==",
+          ">=",
+          "<=",
+          "=",
+          "<",
+          ">",
+          "..",
+          ".",
+          "not",
+          "{",
+          "}",
+          "[",
+          "]",
+          "#",
+          ";"
+        ]
   return (pack x, C "operator")
 
 -- | parses everything else

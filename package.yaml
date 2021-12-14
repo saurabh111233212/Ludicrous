@@ -36,7 +36,6 @@ dependencies:
 - path
 - path-io
 - vty
-- word-wrap
 - microlens
 - deepseq
 - split
